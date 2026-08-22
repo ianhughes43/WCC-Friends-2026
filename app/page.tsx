@@ -58,7 +58,7 @@ export default async function Home() {
 
           <article className="card statCard">
             <div><span className="miniLabel">League average</span><strong>{averageGw}</strong><small>{current.name} pts</small></div>
-            <div><span className="miniLabel">Biggest mover</span><strong>{biggestMover ? Math.max(0, biggestMover.last_rank - biggestMover.rank) : 0}</strong><small>{biggestMover?.entry_name || "—"}</small></div>
+      <div><span className="miniLabel">Biggest mover</span><strong>{biggestMover && biggestMover.last_rank > biggestMover.rank ? `▲ ${biggestMover.last_rank - biggestMover.rank}` : "—"}</strong><small>{biggestMover && biggestMover.last_rank > biggestMover.rank ? biggestMover.entry_name : "No rank changes yet"}</small></div>
             <div><span className="miniLabel">Managers</span><strong>{league.standings.length}</strong><small>in standings</small></div>
           </article>
         </section>
