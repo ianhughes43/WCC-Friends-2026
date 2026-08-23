@@ -111,7 +111,7 @@ export default async function Home() {
 <SquidGame leagueId={leagueId} />
 
 
-        <footer>Data refreshes from the public Fantasy Premier League endpoints. This project is unofficial and not affiliated with the Premier League.</footer>
+         <footer>Data refreshes from the public Fantasy Premier League endpoints. This project is unofficial and not affiliated with the Premier League.</footer>
       </main>
     );
   } catch (error) {
