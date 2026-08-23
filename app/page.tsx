@@ -100,7 +100,9 @@ export default async function Home() {
                   </div>;
                 })}
               </div>
-        
+        </article>
+</div>
+</section>
         
 
     
