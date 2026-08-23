@@ -118,8 +118,8 @@ export default async function Home() {
             {top.map((x, i) => <div key={x.entry}><span>{i + 1}</span><b>{x.entry_name}</b><small>{x.total} pts</small></div>)}
           </div>
         </section>
-</section>
-</section>
+
+
 
 <SquidGame leagueId={leagueId} />
 
