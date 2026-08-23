@@ -35,3 +35,18 @@ export async function getLeague(leagueId: string) {
 export async function getFixtures(eventId: number) {
   return fplFetch<Fixture[]>(`/fixtures/?event=${eventId}`);
 }
+export type EntryHistoryRow = {
+  event: number;
+  points: number;
+  total_points: number;
+  overall_rank: number;
+  points_on_bench: number;
+};
+
+type EntryHistoryResponse = {
+  current: EntryHistoryRow[];
+};
+
+export async function getEntryHistory(entryId: number) {
+  return fplFetch<EntryHistoryResponse>(`/entry/${entryId}/history/`);
+}
