@@ -60,7 +60,7 @@ export default async function Home() {
           <article className="card statCard">
             <div><span className="miniLabel">League average</span><strong>{averageGw}</strong><small>{current.name} pts</small></div>
       <div><span className="miniLabel">Biggest mover</span><strong>{biggestMover && biggestMover.last_rank > biggestMover.rank ? `▲ ${biggestMover.last_rank - biggestMover.rank}` : "—"}</strong><small>{biggestMover && biggestMover.last_rank > biggestMover.rank ? biggestMover.entry_name : "No rank changes yet"}</small></div>
-            <div><span className="miniLabel">Managers</span><strong>{league.standings.length}</strong><small>in standings</small></div>
+      
           </article>
         </section>
 
@@ -100,24 +100,12 @@ export default async function Home() {
                   </div>;
                 })}
               </div>
-            </article>
-
-            <article className="card">
-              <div className="cardHead"><h2>Price Changes This GW</h2><span>£</span></div>
-              <div className="prices">
-                <div><h3 className="up">Risers</h3>{risers.length ? risers.map(p => <p key={p.id}><span>{p.web_name}</span><b className="up">+£{(p.cost_change_event / 10).toFixed(1)}m</b></p>) : <p className="muted">No risers yet</p>}</div>
-                <div><h3 className="down">Fallers</h3>{fallers.length ? fallers.map(p => <p key={p.id}><span>{p.web_name}</span><b className="down">−£{(Math.abs(p.cost_change_event) / 10).toFixed(1)}m</b></p>) : <p className="muted">No fallers yet</p>}</div>
-              </div>
-            </article>
+        
           </div>
         </section>
 
-        <section className="card topFive">
-          <div className="cardHead"><h2>Top 5</h2><span>Overall</span></div>
-          <div className="podium">
-            {top.map((x, i) => <div key={x.entry}><span>{i + 1}</span><b>{x.entry_name}</b><small>{x.total} pts</small></div>)}
-          </div>
-        </section>
+    
+    
 
 
 
