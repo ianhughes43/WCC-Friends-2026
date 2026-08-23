@@ -86,21 +86,12 @@ export default async function Home() {
             </div>
           </article>
 
-          <div className="stack">
-            <article className="card">
-              <div className="cardHead"><h2>{current.name} Fixtures</h2><span>{fixtures.filter(f => f.finished).length}/{fixtures.length}</span></div>
-              <div className="fixtures">
-                {fixtures.map((f) => {
-                  const home = teamMap.get(f.team_h);
-                  const away = teamMap.get(f.team_a);
-                  return <div className="fixture" key={f.id}>
-                    <span>{home?.short_name || f.team_h}</span>
-                    <strong>{f.started ? `${f.team_h_score ?? 0} – ${f.team_a_score ?? 0}` : formatKickoff(f.kickoff_time)}</strong>
-                    <span>{away?.short_name || f.team_a}</span>
-                  </div>;
-                })}
-              </div>
-        </article>
+          
+          
+                
+              
+            
+        
 </div>
 </section>
         
