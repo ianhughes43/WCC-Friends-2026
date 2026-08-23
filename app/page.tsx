@@ -1,4 +1,5 @@
 import Countdown from "./Countdown";
+import SquidGame from "./SquidGame";
 import { getBootstrap, getFixtures, getLeague } from "./fpl";
 
 export const dynamic = "force-dynamic";
@@ -117,6 +118,11 @@ export default async function Home() {
             {top.map((x, i) => <div key={x.entry}><span>{i + 1}</span><b>{x.entry_name}</b><small>{x.total} pts</small></div>)}
           </div>
         </section>
+</section>
+</section>
+
+<SquidGame leagueId={leagueId} />
+
 
         <footer>Data refreshes from the public Fantasy Premier League endpoints. This project is unofficial and not affiliated with the Premier League.</footer>
       </main>
