@@ -68,7 +68,7 @@ export default async function Home() {
             <div className="cardHead"><h2>League Standings</h2><span>Live</span></div>
             <div className="tableWrap">
               <table>
-                <thead><tr><th>#</th><th>Team / Manager</th><th>GW</th><th>Total</th><th>Move</th></tr></thead>
+                <thead><tr><th>#</th><th>Team / Manager</th><th>GW</th><th>Total</th><th>gw Move</th></tr></thead>
                 <tbody>
                   {league.standings.map((row) => {
                     const mv = movement(row.rank, row.last_rank);
