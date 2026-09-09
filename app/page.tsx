@@ -75,7 +75,7 @@ export default async function Home() {
 
           <article className="card statCard twoStats">
             <div><span className="miniLabel">League average</span><strong>{averageGw}</strong><small>{current.name} pts</small></div>
-            <div><span className="miniLabel">Biggest mover</span><strong>{biggestMove > 0 ? `▲ ${biggestMove}` : "—"}</strong><small>{biggestMove > 0 ? biggestMover?.entry_name : "No rank changes yet"}</small></div>
+            <div><span className="miniLabel">Biggest mover</span><strong>{biggestMove > 0 ? `▲ ${biggestMove}` : "—"}</strong><small>{biggestMove > 0 ? `${biggestMover?.entry_name} · ${biggestMover?.player_name}` : "No rank changes yet"}</small></div>
           </article>
         </section>
 
