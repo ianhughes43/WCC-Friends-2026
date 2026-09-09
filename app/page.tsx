@@ -89,7 +89,11 @@ export default async function Home() {
                   const mv = movement(row.rank, row.last_rank);
                   return (
                     <tr key={row.entry}>
-                      <td className="rank">{row.rank}</td>
+                      <td className={`rank ${row.rank <= 3 ? "prizeRank" : ""}`}>
+                        {row.rank === 1 ? <><span className="rankPlace">🥇 1st</span><span className="rankPrize">£200</span></> :
+                         row.rank === 2 ? <><span className="rankPlace">🥈 2nd</span><span className="rankPrize">£100</span></> :
+                         row.rank === 3 ? <><span className="rankPlace">🥉 3rd</span><span className="rankPrize">£30</span></> : row.rank}
+                      </td>
                       <td><a className="teamLink" href={`https://fantasy.premierleague.com/entry/${row.entry}/event/${current.id}`} target="_blank" rel="noreferrer"><b>{row.entry_name}</b><small>{row.player_name}</small></a></td>
                       <td>{row.event_total ?? "—"}</td>
                       <td><b>{row.total}</b></td>
