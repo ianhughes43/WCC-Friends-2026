@@ -1,10 +1,19 @@
-import { getBootstrap, getEntryHistory, getLeague } from "./fpl";
+import { EntryHistoryResponse, FplEvent, LeagueStanding } from "./types";
 
 const SQUID_START_GW = 4;
 const SQUID_FINAL_GW = 32;
 
+type HistoryBundle = {
+  manager: LeagueStanding;
+  history: EntryHistoryResponse;
+};
+
 type SquidGameProps = {
-  leagueId: string;
+  standings: LeagueStanding[];
+  events: FplEvent[];
+  currentEvent: FplEvent;
+  histories: HistoryBundle[];
+  liveScores: Record<number, number>;
 };
 
 type Elimination = {
@@ -25,22 +34,14 @@ type PendingTie = {
   }[];
 };
 
-export default async function SquidGame({ leagueId }: SquidGameProps) {
-  const [bootstrap, leagueData] = await Promise.all([
-    getBootstrap(),
-    getLeague(leagueId),
-  ]);
-
-  const standings = leagueData.standings;
-
-  const histories = await Promise.all(
-    standings.map(async (manager) => ({
-      manager,
-      history: await getEntryHistory(manager.entry),
-    }))
-  );
-
-  const completedSquidGws = bootstrap.events
+export default function SquidGame({
+  standings,
+  events,
+  currentEvent,
+  histories,
+  liveScores,
+}: SquidGameProps) {
+  const completedSquidGws = events
     .filter(
       (event) =>
         event.finished &&
@@ -59,7 +60,6 @@ export default async function SquidGame({ leagueId }: SquidGameProps) {
       .filter(({ manager }) => alive.has(manager.entry))
       .map(({ manager, history }) => {
         const gwHistory = history.current.find((row) => row.event === gw);
-
         return {
           entry: manager.entry,
           team: manager.entry_name,
@@ -81,10 +81,7 @@ export default async function SquidGame({ leagueId }: SquidGameProps) {
     if (!scores.length) continue;
 
     const lowestScore = Math.min(...scores.map((result) => result.points));
-
-    const lowestManagers = scores.filter(
-      (result) => result.points === lowestScore
-    );
+    const lowestManagers = scores.filter((result) => result.points === lowestScore);
 
     if (lowestManagers.length > 1) {
       pendingTie = {
@@ -96,15 +93,11 @@ export default async function SquidGame({ leagueId }: SquidGameProps) {
           manager: result.manager,
         })),
       };
-
-      // Stop here until the league admin resolves the tie.
       break;
     }
 
     const eliminated = lowestManagers[0];
-
     alive.delete(eliminated.entry);
-
     eliminations.push({
       gw,
       entry: eliminated.entry,
@@ -115,183 +108,129 @@ export default async function SquidGame({ leagueId }: SquidGameProps) {
   }
 
   const aliveManagers = standings.filter((manager) => alive.has(manager.entry));
+  const liveGwActive =
+    currentEvent.id >= SQUID_START_GW &&
+    currentEvent.id <= SQUID_FINAL_GW &&
+    !currentEvent.finished &&
+    !pendingTie;
 
-  const squidStarted = completedSquidGws.length > 0;
+  const liveRows = aliveManagers
+    .map((manager) => ({
+      ...manager,
+      livePoints: liveScores[manager.entry],
+    }))
+    .filter((manager) => typeof manager.livePoints === "number")
+    .sort((a, b) => a.livePoints - b.livePoints || a.rank - b.rank);
+
+  const lowestLive = liveRows.length ? liveRows[0].livePoints : null;
+  const hasStarted = completedSquidGws.length > 0 || currentEvent.id >= SQUID_START_GW;
 
   return (
-    <section
-      style={{
-        marginTop: "28px",
-        border: "1px solid rgba(255,255,255,0.12)",
-        borderRadius: "22px",
-        overflow: "hidden",
-        background: "rgba(10, 30, 44, 0.72)",
-      }}
-    >
-      <div style={{ padding: "24px" }}>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            gap: "16px",
-            alignItems: "center",
-          }}
-        >
-          <div>
-            <div
-              style={{
-                fontSize: "12px",
-                letterSpacing: "0.18em",
-                textTransform: "uppercase",
-                opacity: 0.65,
-              }}
-            >
-              Survival Competition
-            </div>
-
-            <h2 style={{ margin: "7px 0 5px", fontSize: "28px" }}>
-              🦑 Squid Game
-            </h2>
-
-            <p style={{ margin: 0, opacity: 0.7 }}>
-              GW4–GW32 · Lowest scorer eliminated each Gameweek
-            </p>
-          </div>
-
-          <div style={{ textAlign: "right" }}>
-            <div
-              style={{
-                fontSize: "11px",
-                textTransform: "uppercase",
-                letterSpacing: "0.12em",
-                opacity: 0.6,
-              }}
-            >
-              Alive
-            </div>
-
-            <strong style={{ fontSize: "30px" }}>{aliveManagers.length}</strong>
-          </div>
+    <section className="competition squidCompetition">
+      <div className="competitionHero squidHero">
+        <div>
+          <div className="eyebrow squidEyebrow">SURVIVAL COMPETITION</div>
+          <h2>🦑 Squid Game</h2>
+          <p>GW4–GW32 · Lowest scorer eliminated every Gameweek</p>
+        </div>
+        <div className="heroNumber">
+          <span>Alive</span>
+          <strong>{aliveManagers.length}</strong>
         </div>
       </div>
 
-      {!squidStarted && (
-        <div
-          style={{
-            padding: "20px 24px",
-            borderTop: "1px solid rgba(255,255,255,0.1)",
-          }}
-        >
-          <strong>Squid starts in Gameweek 4.</strong>
-          <div style={{ marginTop: "6px", opacity: 0.7 }}>
-            All {standings.length} current league managers are still alive.
-          </div>
-        </div>
+      <div className="ruleStrip">
+        <span>🏆 Winner £100</span>
+        <span>⚡ Chips allowed</span>
+        <span>🔄 Live scores auto-refresh</span>
+      </div>
+
+      {!hasStarted && (
+        <article className="card noticeCard">
+          <h3>Squid starts in Gameweek 4</h3>
+          <p>All {standings.length} current league managers are still alive.</p>
+        </article>
       )}
 
       {pendingTie && (
-        <div
-          style={{
-            padding: "20px 24px",
-            borderTop: "1px solid rgba(255,255,255,0.1)",
-          }}
-        >
-          <strong>⚠️ Admin decision required — GW{pendingTie.gw}</strong>
-
-          <div style={{ marginTop: "6px", opacity: 0.75 }}>
-            Lowest score: {pendingTie.points} points
+        <article className="card warningCard">
+          <div className="cardHead">
+            <h2>⚠️ Admin decision required — GW{pendingTie.gw}</h2>
+            <span>{pendingTie.points} pts</span>
           </div>
-
-          <div style={{ marginTop: "14px" }}>
+          <div className="warningBody">
+            <p>These managers are tied for the lowest score. No elimination is applied until the tie is resolved.</p>
             {pendingTie.managers.map((manager) => (
-              <div key={manager.entry} style={{ marginBottom: "8px" }}>
-                <strong>{manager.team}</strong>
-                <span style={{ opacity: 0.65 }}> — {manager.manager}</span>
+              <div className="simpleRow" key={manager.entry}>
+                <div><b>{manager.team}</b><small>{manager.manager}</small></div>
+                <strong>{pendingTie?.points} pts</strong>
               </div>
             ))}
           </div>
+        </article>
+      )}
 
-          <div style={{ marginTop: "10px", opacity: 0.65 }}>
-            No elimination has been applied until the league admin chooses who
-            goes out.
+      {liveGwActive && (
+        <article className="card liveCard">
+          <div className="cardHead">
+            <h2>🔴 {currentEvent.name} Live Survival</h2>
+            <span>auto 60s</span>
           </div>
-        </div>
-      )}
-
-      {eliminations.length > 0 && (
-        <div
-          style={{
-            borderTop: "1px solid rgba(255,255,255,0.1)",
-            padding: "20px 24px",
-          }}
-        >
-          <h3 style={{ marginTop: 0 }}>Elimination History</h3>
-
-          {eliminations
-            .slice()
-            .reverse()
-            .map((elimination) => (
-              <div
-                key={`${elimination.gw}-${elimination.entry}`}
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "55px 1fr auto",
-                  gap: "12px",
-                  padding: "12px 0",
-                  borderTop: "1px solid rgba(255,255,255,0.07)",
-                }}
-              >
-                <strong>GW{elimination.gw}</strong>
-
-                <div>
-                  <strong>{elimination.team}</strong>
-                  <div style={{ opacity: 0.6, fontSize: "13px" }}>
-                    {elimination.manager}
-                  </div>
-                </div>
-
-                <strong>{elimination.points} pts</strong>
-              </div>
-            ))}
-        </div>
-      )}
-
-      <div
-        style={{
-          borderTop: "1px solid rgba(255,255,255,0.1)",
-          padding: "20px 24px",
-        }}
-      >
-        <h3 style={{ marginTop: 0 }}>Still Alive</h3>
-
-        <div
-          style={{
-            display: "grid",
-            gap: "10px",
-          }}
-        >
-          {aliveManagers.map((manager) => (
-            <div
-              key={manager.entry}
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                gap: "12px",
-                padding: "11px 0",
-                borderTop: "1px solid rgba(255,255,255,0.06)",
-              }}
-            >
-              <div>
-                <strong>{manager.entry_name}</strong>
-                <div style={{ opacity: 0.6, fontSize: "13px" }}>
-                  {manager.player_name}
-                </div>
-              </div>
-
-              <span style={{ opacity: 0.7 }}>ALIVE</span>
+          {liveRows.length > 0 ? (
+            <div className="tableWrap noMax">
+              <table>
+                <thead>
+                  <tr><th>Zone</th><th>Team / Manager</th><th>Live GW</th></tr>
+                </thead>
+                <tbody>
+                  {liveRows.map((manager) => {
+                    const danger = manager.livePoints === lowestLive;
+                    return (
+                      <tr className={danger ? "dangerRow" : ""} key={manager.entry}>
+                        <td><span className={danger ? "dangerBadge" : "safeBadge"}>{danger ? "OUT" : "SAFE"}</span></td>
+                        <td><b>{manager.entry_name}</b><small className="blockMuted">{manager.player_name}</small></td>
+                        <td className="scoreCell"><b>{manager.livePoints}</b></td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
-          ))}
-        </div>
+          ) : (
+            <div className="emptyState">Live scores will appear here once FPL publishes this Gameweek&apos;s manager scores.</div>
+          )}
+        </article>
+      )}
+
+      <div className="competitionGrid">
+        <article className="card">
+          <div className="cardHead"><h2>Still Alive</h2><span>{aliveManagers.length}</span></div>
+          <div className="compactList">
+            {aliveManagers.map((manager) => (
+              <div className="simpleRow" key={manager.entry}>
+                <div><b>{manager.entry_name}</b><small>{manager.player_name}</small></div>
+                <span className="safeBadge">ALIVE</span>
+              </div>
+            ))}
+          </div>
+        </article>
+
+        <article className="card">
+          <div className="cardHead"><h2>Elimination History</h2><span>{eliminations.length}</span></div>
+          {eliminations.length ? (
+            <div className="compactList">
+              {eliminations.slice().reverse().map((elimination) => (
+                <div className="simpleRow" key={`${elimination.gw}-${elimination.entry}`}>
+                  <span className="gwBadge">GW{elimination.gw}</span>
+                  <div className="grow"><b>{elimination.team}</b><small>{elimination.manager}</small></div>
+                  <strong>{elimination.points}</strong>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="emptyState">No eliminations yet.</div>
+          )}
+        </article>
       </div>
     </section>
   );

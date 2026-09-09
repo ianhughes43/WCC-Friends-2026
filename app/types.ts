@@ -71,3 +71,36 @@ export type Fixture = {
   finished: boolean;
   started: boolean;
 };
+
+export type EntryHistoryRow = {
+  event: number;
+  points: number;
+  total_points: number;
+  rank: number | null;
+  rank_sort: number | null;
+  overall_rank: number | null;
+  bank: number;
+  value: number;
+  event_transfers: number;
+  event_transfers_cost: number;
+  points_on_bench: number;
+};
+
+export type EntryHistoryResponse = {
+  current: EntryHistoryRow[];
+  past: unknown[];
+  chips: unknown[];
+};
+
+export type EntryEventPicksResponse = {
+  active_chip: string | null;
+  automatic_subs: unknown[];
+  entry_history: EntryHistoryRow;
+  picks: {
+    element: number;
+    position: number;
+    multiplier: number;
+    is_captain: boolean;
+    is_vice_captain: boolean;
+  }[];
+};
