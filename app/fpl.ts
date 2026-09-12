@@ -28,6 +28,25 @@ async function fplFetch<T>(path: string): Promise<T> {
   return response.json() as Promise<T>;
 }
 
+async function fplFetchLive<T>(path: string): Promise<T> {
+  const response = await fetch(`${BASE}${path}`, {
+    cache: "no-store",
+    headers: {
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36",
+      Accept: "application/json, text/plain, */*",
+      "Accept-Language": "en-GB,en;q=0.9",
+      Referer: "https://fantasy.premierleague.com/",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`FPL API returned ${response.status} for ${path}`);
+  }
+
+  return response.json() as Promise<T>;
+}
+
 export async function getBootstrap() {
   const response = await fetch(`${BASE}/bootstrap-static/`, {
     cache: "no-store",
@@ -80,4 +99,13 @@ export async function getEntryEventPicks(entryId: number, eventId: number) {
   return fplFetch<EntryEventPicksResponse>(
     `/entry/${entryId}/event/${eventId}/picks/`
   );
+}
+
+export async function getEventLive(eventId: number) {
+  return fplFetchLive<{
+    elements: {
+      id: number;
+      stats: { total_points: number };
+    }[];
+  }>(`/event/${eventId}/live/`);
 }
