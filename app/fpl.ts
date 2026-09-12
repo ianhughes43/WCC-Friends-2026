@@ -12,7 +12,13 @@ const BASE = "https://fantasy.premierleague.com/api";
 async function fplFetch<T>(path: string): Promise<T> {
   const response = await fetch(`${BASE}${path}`, {
     next: { revalidate: 60 },
-    headers: { "User-Agent": "FPL-League-Tracker/1.0" },
+    headers: {
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36",
+      Accept: "application/json, text/plain, */*",
+      "Accept-Language": "en-GB,en;q=0.9",
+      Referer: "https://fantasy.premierleague.com/",
+    },
   });
 
   if (!response.ok) {
@@ -25,7 +31,13 @@ async function fplFetch<T>(path: string): Promise<T> {
 export async function getBootstrap() {
   const response = await fetch(`${BASE}/bootstrap-static/`, {
     cache: "no-store",
-    headers: { "User-Agent": "FPL-League-Tracker/1.0" },
+    headers: {
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36",
+      Accept: "application/json, text/plain, */*",
+      "Accept-Language": "en-GB,en;q=0.9",
+      Referer: "https://fantasy.premierleague.com/",
+    },
   });
 
   if (!response.ok) {
