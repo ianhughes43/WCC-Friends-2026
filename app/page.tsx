@@ -3,7 +3,7 @@ import CompetitionTabs from "./CompetitionTabs";
 import Countdown from "./Countdown";
 import SquidGame from "./SquidGame";
 import Tour from "./Tour";
-import { getBootstrap, getEntryEventPicks, getEntryHistory, getLeague } from "./fpl";
+import { getBootstrap, getEntryHistory, getLeague } from "./fpl";
 
 export const dynamic = "force-dynamic";
 
@@ -36,22 +36,11 @@ export default async function Home() {
       }))
     );
 
-    // Use FPL's own manager Gameweek total for Squid and Tour.
-    // This is the same score shown on the manager's FPL points page and
-    // includes transfer hits and any automatic substitutions FPL has applied.
-    const liveScorePairs = await Promise.all(
-      league.standings.map(async (manager) => {
-        try {
-          const picks = await getEntryEventPicks(manager.entry, current.id);
-          return [manager.entry, picks.entry_history.points] as const;
-        } catch {
-          return [manager.entry, null] as const;
-        }
-      })
-    );
-
+    // Use the exact Gameweek score already shown in the official FPL league standings.
+    // This keeps Squid and Tour aligned with the Overall tab and means FPL itself
+    // handles autosubs, captaincy changes, bonus updates and transfer hits.
     const liveScores = Object.fromEntries(
-      liveScorePairs.filter((pair): pair is readonly [number, number] => pair[1] !== null)
+      league.standings.map((manager) => [manager.entry, manager.event_total ?? 0])
     );
 
     const movers = league.standings
