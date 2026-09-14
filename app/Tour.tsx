@@ -165,7 +165,7 @@ export default function Tour({ standings, events, currentEvent, histories, liveS
               <div className="majorTop"><span>{result.major.name}</span><b className={`status ${status.toLowerCase()}`}>{status}</b></div>
               <strong>GW{result.major.gw1} + GW{result.major.gw2}</strong>
               <small>Winner £30</small>
-              {leader && <p>{result.finished ? "🏆" : "Leader:"} {leader.team} · {leader.total} pts</p>}
+              {leader && <p>{result.finished ? "🏆" : "Leader:"} <a className="teamLink" href={`https://fantasy.premierleague.com/en/entry/${leader.entry}/event/${currentEvent.id}`} target="_blank" rel="noreferrer"><b>{leader.team}</b></a> · {leader.total} pts</p>}
             </article>
           );
         })}
@@ -192,7 +192,7 @@ export default function Tour({ standings, events, currentEvent, histories, liveS
                   {currentMajor.ranked.map((row, index) => (
                     <tr key={row.entry}>
                       <td className="rank">{index + 1}</td>
-                      <td><b>{row.team}</b><small className="blockMuted">{row.manager}</small></td>
+                      <td><a className="teamLink" href={`https://fantasy.premierleague.com/en/entry/${row.entry}/event/${currentEvent.id}`} target="_blank" rel="noreferrer"><b>{row.team}</b><small>{row.manager}</small></a></td>
                       <td>{row.gw1 ?? "—"}</td>
                       <td>{row.gw2 ?? "—"}</td>
                       <td><b>{row.total ?? "—"}</b></td>
@@ -217,7 +217,7 @@ export default function Tour({ standings, events, currentEvent, histories, liveS
               {rankedTour.map((row, index) => (
                 <tr key={row.entry}>
                   <td className="rank">{index + 1}</td>
-                  <td><b>{row.team}</b><small className="blockMuted">{row.manager}</small></td>
+                  <td><a className="teamLink" href={`https://fantasy.premierleague.com/en/entry/${row.entry}/event/${currentEvent.id}`} target="_blank" rel="noreferrer"><b>{row.team}</b><small>{row.manager}</small></a></td>
                   <td><b>{row.points}</b></td>
                   <td>{row.wins}</td>
                   <td>{row.seconds}</td>

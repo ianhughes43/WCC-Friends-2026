@@ -162,7 +162,7 @@ export default function SquidGame({
             <p>These managers are tied for the lowest score. No elimination is applied until the tie is resolved.</p>
             {pendingTie.managers.map((manager) => (
               <div className="simpleRow" key={manager.entry}>
-                <div><b>{manager.team}</b><small>{manager.manager}</small></div>
+                <div><a className="teamLink" href={`https://fantasy.premierleague.com/en/entry/${manager.entry}/event/${currentEvent.id}`} target="_blank" rel="noreferrer"><b>{manager.team}</b><small>{manager.manager}</small></a></div>
                 <strong>{pendingTie?.points} pts</strong>
               </div>
             ))}
@@ -196,7 +196,7 @@ export default function SquidGame({
                     return (
                       <tr className={rowClass} key={manager.entry}>
                         <td><span className={badgeClass}>{label}</span></td>
-                        <td><b>{manager.entry_name}</b><small className="blockMuted">{manager.player_name}</small></td>
+                        <td><a className="teamLink" href={`https://fantasy.premierleague.com/en/entry/${manager.entry}/event/${currentEvent.id}`} target="_blank" rel="noreferrer"><b>{manager.entry_name}</b><small>{manager.player_name}</small></a></td>
                         <td className="scoreCell"><b>{manager.livePoints}</b></td>
                       </tr>
                     );
@@ -216,7 +216,7 @@ export default function SquidGame({
           <div className="compactList">
             {aliveManagers.map((manager) => (
               <div className="simpleRow" key={manager.entry}>
-                <div><b>{manager.entry_name}</b><small>{manager.player_name}</small></div>
+                <div><a className="teamLink" href={`https://fantasy.premierleague.com/en/entry/${manager.entry}/event/${currentEvent.id}`} target="_blank" rel="noreferrer"><b>{manager.entry_name}</b><small>{manager.player_name}</small></a></div>
                 <span className="safeBadge">ALIVE</span>
               </div>
             ))}
@@ -230,7 +230,7 @@ export default function SquidGame({
               {eliminations.slice().reverse().map((elimination) => (
                 <div className="simpleRow" key={`${elimination.gw}-${elimination.entry}`}>
                   <span className="gwBadge">GW{elimination.gw}</span>
-                  <div className="grow"><b>{elimination.team}</b><small>{elimination.manager}</small></div>
+                  <div className="grow"><a className="teamLink" href={`https://fantasy.premierleague.com/en/entry/${elimination.entry}/event/${currentEvent.id}`} target="_blank" rel="noreferrer"><b>{elimination.team}</b><small>{elimination.manager}</small></a></div>
                   <strong>{elimination.points}</strong>
                 </div>
               ))}
