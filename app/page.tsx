@@ -3,7 +3,7 @@ import CompetitionTabs from "./CompetitionTabs";
 import Countdown from "./Countdown";
 import SquidGame from "./SquidGame";
 import Tour from "./Tour";
-import { getBootstrap, getEntryEventPicks, getEntryHistory, getEventLive, getLeague } from "./fpl";
+import { getBootstrap, getEntryEventPicks, getEntryHistory, getLeague } from "./fpl";
 
 export const dynamic = "force-dynamic";
 
@@ -36,25 +36,14 @@ export default async function Home() {
       }))
     );
 
-    // Build truly live manager scores from the FPL event-live endpoint.
-    // entry_history.points can lag during matches, so Squid and Tour now use
-    // each manager's locked picks multiplied by the live player points.
-    const eventLive = await getEventLive(current.id);
-    const livePlayerPoints = new Map(
-      eventLive.elements.map((element) => [element.id, element.stats.total_points])
-    );
-
+    // Use FPL's own manager Gameweek total for Squid and Tour.
+    // This is the same score shown on the manager's FPL points page and
+    // includes transfer hits and any automatic substitutions FPL has applied.
     const liveScorePairs = await Promise.all(
       league.standings.map(async (manager) => {
         try {
           const picks = await getEntryEventPicks(manager.entry, current.id);
-          const squadPoints = picks.picks.reduce(
-            (sum, pick) =>
-              sum + (livePlayerPoints.get(pick.element) ?? 0) * pick.multiplier,
-            0
-          );
-          const transferCost = picks.entry_history.event_transfers_cost || 0;
-          return [manager.entry, squadPoints - transferCost] as const;
+          return [manager.entry, picks.entry_history.points] as const;
         } catch {
           return [manager.entry, null] as const;
         }
