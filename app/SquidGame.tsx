@@ -185,9 +185,17 @@ export default function SquidGame({
                 <tbody>
                   {liveRows.map((manager) => {
                     const danger = manager.livePoints === lowestLive;
+                    const warning =
+                      lowestLive !== null &&
+                      manager.livePoints > lowestLive &&
+                      manager.livePoints <= lowestLive + 10;
+                    const rowClass = danger ? "dangerRow" : warning ? "warningRow" : "safeRow";
+                    const badgeClass = danger ? "dangerBadge" : warning ? "warningBadge" : "safeBadge";
+                    const label = danger ? "LAST" : warning ? "DANGER" : "SAFE";
+
                     return (
-                      <tr className={danger ? "dangerRow" : ""} key={manager.entry}>
-                        <td><span className={danger ? "dangerBadge" : "safeBadge"}>{danger ? "OUT" : "SAFE"}</span></td>
+                      <tr className={rowClass} key={manager.entry}>
+                        <td><span className={badgeClass}>{label}</span></td>
                         <td><b>{manager.entry_name}</b><small className="blockMuted">{manager.player_name}</small></td>
                         <td className="scoreCell"><b>{manager.livePoints}</b></td>
                       </tr>
