@@ -41,13 +41,21 @@ export default function SquidGame({
   histories,
   liveScores,
 }: SquidGameProps) {
+  // FPL can leave an event marked as current for a while after the Gameweek
+  // has been finalised. Treat a Squid GW as complete when either FPL marks
+  // the event finished OR every manager history contains that GW's final row.
   const completedSquidGws = events
-    .filter(
-      (event) =>
-        event.finished &&
-        event.id >= SQUID_START_GW &&
-        event.id <= SQUID_FINAL_GW
-    )
+    .filter((event) => {
+      if (event.id < SQUID_START_GW || event.id > SQUID_FINAL_GW) return false;
+
+      const finalHistoryPublished =
+        histories.length > 0 &&
+        histories.every(({ history }) =>
+          history.current.some((row) => row.event === event.id)
+        );
+
+      return event.finished || finalHistoryPublished;
+    })
     .map((event) => event.id)
     .sort((a, b) => a - b);
 
@@ -108,10 +116,12 @@ export default function SquidGame({
   }
 
   const aliveManagers = standings.filter((manager) => alive.has(manager.entry));
+  const currentGwFinalised = completedSquidGws.includes(currentEvent.id);
   const liveGwActive =
     currentEvent.id >= SQUID_START_GW &&
     currentEvent.id <= SQUID_FINAL_GW &&
     !currentEvent.finished &&
+    !currentGwFinalised &&
     !pendingTie;
 
   const liveRows = aliveManagers
