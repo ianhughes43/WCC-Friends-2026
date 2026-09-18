@@ -41,15 +41,29 @@ export default function SquidGame({
   histories,
   liveScores,
 }: SquidGameProps) {
-  // Only eliminate from Gameweeks that FPL has actually moved past.
-  // Never infer completion from deadlines or manager-history rows: both can
-  // exist while the current Gameweek is still live.
+  // Work out the actually active Gameweek from the deadlines.
+  // This avoids relying on FPL's is_current/is_next flags, which can lag or
+  // briefly point at the wrong event while a Gameweek is live.
+  const now = Date.now();
+  const startedEvents = events
+    .filter((event) => new Date(event.deadline_time).getTime() <= now)
+    .sort((a, b) => b.id - a.id);
+
+  const activeEvent =
+    startedEvents.find((event) => !event.finished) ||
+    startedEvents[0] ||
+    currentEvent;
+
+  // A Squid GW can only be processed if it is BEFORE the active live GW,
+  // or FPL has explicitly marked it finished. The active GW itself is NEVER
+  // allowed into elimination/tie processing.
   const completedSquidGws = events
     .filter(
       (event) =>
         event.id >= SQUID_START_GW &&
         event.id <= SQUID_FINAL_GW &&
-        (event.finished || event.id < currentEvent.id)
+        event.id !== activeEvent.id &&
+        (event.finished || event.id < activeEvent.id)
     )
     .map((event) => event.id)
     .sort((a, b) => a - b);
@@ -111,12 +125,10 @@ export default function SquidGame({
   }
 
   const aliveManagers = standings.filter((manager) => alive.has(manager.entry));
-  const currentGwFinalised = completedSquidGws.includes(currentEvent.id);
   const liveGwActive =
-    currentEvent.id >= SQUID_START_GW &&
-    currentEvent.id <= SQUID_FINAL_GW &&
-    !currentEvent.finished &&
-    !currentGwFinalised &&
+    activeEvent.id >= SQUID_START_GW &&
+    activeEvent.id <= SQUID_FINAL_GW &&
+    !activeEvent.finished &&
     !pendingTie;
 
   const liveRows = aliveManagers
@@ -128,7 +140,7 @@ export default function SquidGame({
     .sort((a, b) => a.livePoints - b.livePoints || a.rank - b.rank);
 
   const lowestLive = liveRows.length ? liveRows[0].livePoints : null;
-  const hasStarted = completedSquidGws.length > 0 || currentEvent.id >= SQUID_START_GW;
+  const hasStarted = completedSquidGws.length > 0 || activeEvent.id >= SQUID_START_GW;
 
   return (
     <section className="competition squidCompetition">
@@ -167,7 +179,7 @@ export default function SquidGame({
             <p>These managers are tied for the lowest score. No elimination is applied until the tie is resolved.</p>
             {pendingTie.managers.map((manager) => (
               <div className="simpleRow" key={manager.entry}>
-                <div><a className="teamLink" href={`https://fantasy.premierleague.com/en/entry/${manager.entry}/event/${currentEvent.id}`} target="_blank" rel="noreferrer"><b>{manager.team}</b><small>{manager.manager}</small></a></div>
+                <div><a className="teamLink" href={`https://fantasy.premierleague.com/en/entry/${manager.entry}/event/${activeEvent.id}`} target="_blank" rel="noreferrer"><b>{manager.team}</b><small>{manager.manager}</small></a></div>
                 <strong>{pendingTie?.points} pts</strong>
               </div>
             ))}
@@ -178,7 +190,7 @@ export default function SquidGame({
       {liveGwActive && (
         <article className="card liveCard">
           <div className="cardHead">
-            <h2>🔴 {currentEvent.name} Live Survival</h2>
+            <h2>🔴 {activeEvent.name} Live Survival</h2>
             <span>auto 60s</span>
           </div>
           {liveRows.length > 0 ? (
@@ -201,7 +213,7 @@ export default function SquidGame({
                     return (
                       <tr className={rowClass} key={manager.entry}>
                         <td><span className={badgeClass}>{label}</span></td>
-                        <td><a className="teamLink" href={`https://fantasy.premierleague.com/en/entry/${manager.entry}/event/${currentEvent.id}`} target="_blank" rel="noreferrer"><b>{manager.entry_name}</b><small>{manager.player_name}</small></a></td>
+                        <td><a className="teamLink" href={`https://fantasy.premierleague.com/en/entry/${manager.entry}/event/${activeEvent.id}`} target="_blank" rel="noreferrer"><b>{manager.entry_name}</b><small>{manager.player_name}</small></a></td>
                         <td className="scoreCell"><b>{manager.livePoints}</b></td>
                       </tr>
                     );
@@ -221,7 +233,7 @@ export default function SquidGame({
           <div className="compactList">
             {aliveManagers.map((manager) => (
               <div className="simpleRow" key={manager.entry}>
-                <div><a className="teamLink" href={`https://fantasy.premierleague.com/en/entry/${manager.entry}/event/${currentEvent.id}`} target="_blank" rel="noreferrer"><b>{manager.entry_name}</b><small>{manager.player_name}</small></a></div>
+                <div><a className="teamLink" href={`https://fantasy.premierleague.com/en/entry/${manager.entry}/event/${activeEvent.id}`} target="_blank" rel="noreferrer"><b>{manager.entry_name}</b><small>{manager.player_name}</small></a></div>
                 <span className="safeBadge">ALIVE</span>
               </div>
             ))}
@@ -235,7 +247,7 @@ export default function SquidGame({
               {eliminations.slice().reverse().map((elimination) => (
                 <div className="simpleRow" key={`${elimination.gw}-${elimination.entry}`}>
                   <span className="gwBadge">GW{elimination.gw}</span>
-                  <div className="grow"><a className="teamLink" href={`https://fantasy.premierleague.com/en/entry/${elimination.entry}/event/${currentEvent.id}`} target="_blank" rel="noreferrer"><b>{elimination.team}</b><small>{elimination.manager}</small></a></div>
+                  <div className="grow"><a className="teamLink" href={`https://fantasy.premierleague.com/en/entry/${elimination.entry}/event/${activeEvent.id}`} target="_blank" rel="noreferrer"><b>{elimination.team}</b><small>{elimination.manager}</small></a></div>
                   <strong>{elimination.points}</strong>
                 </div>
               ))}
