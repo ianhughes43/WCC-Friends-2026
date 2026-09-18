@@ -41,25 +41,16 @@ export default function SquidGame({
   histories,
   liveScores,
 }: SquidGameProps) {
-  // A Squid Gameweek is complete when FPL marks it finished.
-  // If FPL is slow to flip that flag, the previous GW is also safe to close
-  // once the NEXT Gameweek deadline has passed.
-  //
-  // This deliberately does NOT use manager-history rows to decide completion:
-  // live Gameweeks can already have provisional 0-point history rows.
-  const now = Date.now();
-
+  // Only eliminate from Gameweeks that FPL has actually moved past.
+  // Never infer completion from deadlines or manager-history rows: both can
+  // exist while the current Gameweek is still live.
   const completedSquidGws = events
-    .filter((event) => {
-      if (event.id < SQUID_START_GW || event.id > SQUID_FINAL_GW) return false;
-
-      const nextEvent = events.find((other) => other.id === event.id + 1);
-      const nextDeadlineHasPassed =
-        !!nextEvent &&
-        new Date(nextEvent.deadline_time).getTime() <= now;
-
-      return event.finished || nextDeadlineHasPassed;
-    })
+    .filter(
+      (event) =>
+        event.id >= SQUID_START_GW &&
+        event.id <= SQUID_FINAL_GW &&
+        (event.finished || event.id < currentEvent.id)
+    )
     .map((event) => event.id)
     .sort((a, b) => a - b);
 
