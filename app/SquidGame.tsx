@@ -41,20 +41,22 @@ export default function SquidGame({
   histories,
   liveScores,
 }: SquidGameProps) {
-  // FPL can leave an event marked as current for a while after the Gameweek
-  // has been finalised. Treat a Squid GW as complete when either FPL marks
-  // the event finished OR every manager history contains that GW's final row.
+  // Only process Gameweeks that are genuinely complete.
+  // A current/live GW can already appear in manager history with provisional
+  // 0-point rows, so history presence must never trigger an elimination.
+  //
+  // FPL can occasionally leave the previous GW flagged as "current" after it
+  // has ended. In that case it is safe to close it only when a later event is
+  // already the current Gameweek.
   const completedSquidGws = events
     .filter((event) => {
       if (event.id < SQUID_START_GW || event.id > SQUID_FINAL_GW) return false;
 
-      const finalHistoryPublished =
-        histories.length > 0 &&
-        histories.every(({ history }) =>
-          history.current.some((row) => row.event === event.id)
-        );
+      const laterCurrentGwExists = events.some(
+        (other) => other.is_current && other.id > event.id
+      );
 
-      return event.finished || finalHistoryPublished;
+      return event.finished || laterCurrentGwExists;
     })
     .map((event) => event.id)
     .sort((a, b) => a - b);
