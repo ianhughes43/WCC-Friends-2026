@@ -22,6 +22,8 @@ type Elimination = {
   team: string;
   manager: string;
   points: number;
+  transferCost: number;
+  squidPoints: number;
 };
 
 type PendingTie = {
@@ -31,6 +33,8 @@ type PendingTie = {
     entry: number;
     team: string;
     manager: string;
+    rawPoints: number;
+    transferCost: number;
   }[];
 };
 
@@ -49,21 +53,20 @@ export default function SquidGame({
     .filter((event) => new Date(event.deadline_time).getTime() <= now)
     .sort((a, b) => b.id - a.id);
 
-  const activeEvent =
-    startedEvents.find((event) => !event.finished) ||
-    startedEvents[0] ||
-    currentEvent;
+  const activeEvent = startedEvents[0] || currentEvent;
+  const activeGwId = activeEvent.id;
 
   // A Squid GW can only be processed if it is BEFORE the active live GW,
   // or FPL has explicitly marked it finished. The active GW itself is NEVER
   // allowed into elimination/tie processing.
+  // Only Gameweeks strictly BEFORE the active GW can ever be processed.
+  // This hard-blocks live GW5 from creating a 0-point tie.
   const completedSquidGws = events
     .filter(
       (event) =>
         event.id >= SQUID_START_GW &&
         event.id <= SQUID_FINAL_GW &&
-        event.id !== activeEvent.id &&
-        (event.finished || event.id < activeEvent.id)
+        event.id < activeGwId
     )
     .map((event) => event.id)
     .sort((a, b) => a - b);
@@ -73,15 +76,20 @@ export default function SquidGame({
   let pendingTie: PendingTie | null = null;
 
   for (const gw of completedSquidGws) {
+    if (gw >= activeGwId) continue;
     const scores = histories
       .filter(({ manager }) => alive.has(manager.entry))
       .map(({ manager, history }) => {
         const gwHistory = history.current.find((row) => row.event === gw);
+        const rawPoints = gwHistory?.points ?? null;
+        const transferCost = gwHistory?.event_transfers_cost ?? 0;
         return {
           entry: manager.entry,
           team: manager.entry_name,
           manager: manager.player_name,
-          points: gwHistory?.points ?? null,
+          rawPoints,
+          transferCost,
+          points: rawPoints === null ? null : rawPoints - transferCost,
         };
       })
       .filter(
@@ -91,6 +99,8 @@ export default function SquidGame({
           entry: number;
           team: string;
           manager: string;
+          rawPoints: number;
+          transferCost: number;
           points: number;
         } => result.points !== null
       );
@@ -108,6 +118,8 @@ export default function SquidGame({
           entry: result.entry,
           team: result.team,
           manager: result.manager,
+          rawPoints: result.rawPoints,
+          transferCost: result.transferCost,
         })),
       };
       break;
@@ -120,22 +132,36 @@ export default function SquidGame({
       entry: eliminated.entry,
       team: eliminated.team,
       manager: eliminated.manager,
-      points: eliminated.points,
+      points: eliminated.rawPoints,
+      transferCost: eliminated.transferCost,
+      squidPoints: eliminated.points,
     });
   }
 
   const aliveManagers = standings.filter((manager) => alive.has(manager.entry));
   const liveGwActive =
-    activeEvent.id >= SQUID_START_GW &&
-    activeEvent.id <= SQUID_FINAL_GW &&
-    !activeEvent.finished &&
+    activeGwId >= SQUID_START_GW &&
+    activeGwId <= SQUID_FINAL_GW &&
     !pendingTie;
 
   const liveRows = aliveManagers
-    .map((manager) => ({
-      ...manager,
-      livePoints: liveScores[manager.entry],
-    }))
+    .map((manager) => {
+      const liveSquidPoints = liveScores[manager.entry];
+      const activeHistory = histories
+        .find(({ manager: historyManager }) => historyManager.entry === manager.entry)
+        ?.history.current.find((row) => row.event === activeGwId);
+      const transferCost = activeHistory?.event_transfers_cost ?? 0;
+
+      return {
+        ...manager,
+        livePoints: liveSquidPoints,
+        transferCost,
+        rawPoints:
+          typeof liveSquidPoints === "number"
+            ? liveSquidPoints + transferCost
+            : liveSquidPoints,
+      };
+    })
     .filter((manager) => typeof manager.livePoints === "number")
     .sort((a, b) => a.livePoints - b.livePoints || a.rank - b.rank);
 
@@ -158,7 +184,7 @@ export default function SquidGame({
 
       <div className="ruleStrip">
         <span>🏆 Winner £100</span>
-        <span>⚡ Chips allowed</span>
+        <span>⚡ Transfer hits count</span>
         <span>🔄 Live scores auto-refresh</span>
       </div>
 
@@ -180,7 +206,9 @@ export default function SquidGame({
             {pendingTie.managers.map((manager) => (
               <div className="simpleRow" key={manager.entry}>
                 <div><a className="teamLink" href={`https://fantasy.premierleague.com/en/entry/${manager.entry}/event/${activeEvent.id}`} target="_blank" rel="noreferrer"><b>{manager.team}</b><small>{manager.manager}</small></a></div>
-                <strong>{pendingTie?.points} pts</strong>
+                <strong>
+                  {manager.rawPoints} pts · {manager.transferCost ? `-${manager.transferCost} hit` : "0 hit"} · {pendingTie?.points} Squid
+                </strong>
               </div>
             ))}
           </div>
@@ -197,7 +225,7 @@ export default function SquidGame({
             <div className="tableWrap noMax">
               <table>
                 <thead>
-                  <tr><th>Zone</th><th>Team / Manager</th><th>Live GW</th></tr>
+                  <tr><th>Zone</th><th>Team / Manager</th><th>Points</th><th>Transfer Cost</th><th>Squid</th></tr>
                 </thead>
                 <tbody>
                   {liveRows.map((manager) => {
@@ -214,6 +242,8 @@ export default function SquidGame({
                       <tr className={rowClass} key={manager.entry}>
                         <td><span className={badgeClass}>{label}</span></td>
                         <td><a className="teamLink" href={`https://fantasy.premierleague.com/en/entry/${manager.entry}/event/${activeEvent.id}`} target="_blank" rel="noreferrer"><b>{manager.entry_name}</b><small>{manager.player_name}</small></a></td>
+                        <td className="scoreCell"><b>{manager.rawPoints}</b></td>
+                        <td className="scoreCell"><b>{manager.transferCost ? `-${manager.transferCost}` : "0"}</b></td>
                         <td className="scoreCell"><b>{manager.livePoints}</b></td>
                       </tr>
                     );
@@ -248,7 +278,9 @@ export default function SquidGame({
                 <div className="simpleRow" key={`${elimination.gw}-${elimination.entry}`}>
                   <span className="gwBadge">GW{elimination.gw}</span>
                   <div className="grow"><a className="teamLink" href={`https://fantasy.premierleague.com/en/entry/${elimination.entry}/event/${activeEvent.id}`} target="_blank" rel="noreferrer"><b>{elimination.team}</b><small>{elimination.manager}</small></a></div>
-                  <strong>{elimination.points}</strong>
+                  <strong>
+                    {elimination.points} pts · {elimination.transferCost ? `-${elimination.transferCost} hit` : "0 hit"} · {elimination.squidPoints} Squid
+                  </strong>
                 </div>
               ))}
             </div>
