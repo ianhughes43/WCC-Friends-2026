@@ -87,6 +87,12 @@ function unresolvedTopSixTie(rows: MajorRow[]) {
 }
 
 export default function Tour({ standings, events, currentEvent, histories, liveScores }: TourProps) {
+  // Determine which Gameweeks have actually begun from their deadlines,
+  // independently of delayed FPL current/finished flags or history publication.
+  const now = Date.now();
+  const startedGw = new Set(
+    events.filter((event) => Date.parse(event.deadline_time) <= now).map((event) => event.id)
+  );
   const majorRows = MAJORS.map((major) => {
     const rows = histories.map((bundle) => {
       const score1 = getScore(bundle, major.gw1, currentEvent, liveScores);
@@ -109,7 +115,7 @@ export default function Tour({ standings, events, currentEvent, histories, liveS
     });
 
     const finished = eventFinished(events, major.gw2);
-    const started = rows.some((row) => row.gw1 !== null || row.gw2 !== null);
+    const started = startedGw.has(major.gw1) || startedGw.has(major.gw2);
     const ranked = rankMajor(rows);
     const unresolvedTie = finished && unresolvedTopSixTie(rows);
 
@@ -224,7 +230,11 @@ export default function Tour({ standings, events, currentEvent, histories, liveS
               </table>
             </div>
           ) : (
-            <div className="emptyState">This Major has not started yet.</div>
+            <div className="emptyState">
+              {currentMajor.started
+                ? "Major underway — waiting for FPL to publish Gameweek scores."
+                : "This Major has not started yet."}
+            </div>
           )}
         </article>
       )}
