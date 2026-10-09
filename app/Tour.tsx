@@ -27,6 +27,10 @@ type MajorRow = {
   overallRank: number;
   gw1: number | null;
   gw2: number | null;
+  gw1Raw: number | null;
+  gw2Raw: number | null;
+  gw1Hit: number;
+  gw2Hit: number;
   total: number | null;
 };
 
@@ -49,10 +53,15 @@ function getScore(
   currentEvent: FplEvent,
   liveScores: Record<number, number>
 ) {
-  if (gw === currentEvent.id && !currentEvent.finished && typeof liveScores[bundle.manager.entry] === "number") {
-    return liveScores[bundle.manager.entry];
-  }
-  return bundle.history.current.find((row) => row.event === gw)?.points ?? null;
+  const historyRow = bundle.history.current.find((row) => row.event === gw);
+  const hit = historyRow?.event_transfers_cost ?? 0;
+  // FPL's displayed GW player points and the transfer penalty are separate.
+  const raw =
+    gw === currentEvent.id && !currentEvent.finished &&
+    typeof liveScores[bundle.manager.entry] === "number"
+      ? liveScores[bundle.manager.entry]
+      : historyRow?.points ?? null;
+  return { raw, hit, net: raw === null ? null : raw - hit };
 }
 
 function rankMajor(rows: MajorRow[]) {
@@ -80,8 +89,10 @@ function unresolvedTopSixTie(rows: MajorRow[]) {
 export default function Tour({ standings, events, currentEvent, histories, liveScores }: TourProps) {
   const majorRows = MAJORS.map((major) => {
     const rows = histories.map((bundle) => {
-      const gw1 = getScore(bundle, major.gw1, currentEvent, liveScores);
-      const gw2 = getScore(bundle, major.gw2, currentEvent, liveScores);
+      const score1 = getScore(bundle, major.gw1, currentEvent, liveScores);
+      const score2 = getScore(bundle, major.gw2, currentEvent, liveScores);
+      const gw1 = score1.net;
+      const gw2 = score2.net;
       return {
         entry: bundle.manager.entry,
         team: bundle.manager.entry_name,
@@ -89,6 +100,10 @@ export default function Tour({ standings, events, currentEvent, histories, liveS
         overallRank: bundle.manager.rank,
         gw1,
         gw2,
+        gw1Raw: score1.raw,
+        gw2Raw: score2.raw,
+        gw1Hit: score1.hit,
+        gw2Hit: score2.hit,
         total: gw1 === null && gw2 === null ? null : (gw1 ?? 0) + (gw2 ?? 0),
       } satisfies MajorRow;
     });
@@ -114,8 +129,11 @@ export default function Tour({ standings, events, currentEvent, histories, liveS
 
   const tableMap = new Map(tourTable.map((row) => [row.entry, row]));
 
+  // Show provisional Tour Points during a live Major; they become final only
+  // after its second Gameweek is finished and any exact tie is resolved.
+  const liveMajor = majorRows.find((result) => result.started && !result.finished);
   for (const result of majorRows) {
-    if (!result.finished || result.unresolvedTie) continue;
+    if (!result.started || result.unresolvedTie) continue;
     result.ranked.slice(0, 6).forEach((row, index) => {
       const tourRow = tableMap.get(row.entry);
       if (!tourRow) return;
@@ -153,7 +171,7 @@ export default function Tour({ standings, events, currentEvent, histories, liveS
       </div>
 
       <div className="ruleStrip tourRuleStrip">
-        <span>🥇 10</span><span>🥈 7</span><span>🥉 5</span><span>4th 3</span><span>5th 2</span><span>6th 1</span>
+        <span>🥇 10</span><span>🥈 7</span><span>🥉 5</span><span>4th 3</span><span>5th 2</span><span>6th 1</span><span>Transfer hits deducted</span>
       </div>
 
       <div className="majorCards">
@@ -165,7 +183,7 @@ export default function Tour({ standings, events, currentEvent, histories, liveS
               <div className="majorTop"><span>{result.major.name}</span><b className={`status ${status.toLowerCase()}`}>{status}</b></div>
               <strong>GW{result.major.gw1} + GW{result.major.gw2}</strong>
               <small>Winner £30</small>
-              {leader && <p>{result.finished ? "🏆" : "Leader:"} <a className="teamLink" href={`https://fantasy.premierleague.com/en/entry/${leader.entry}/event/${currentEvent.id}`} target="_blank" rel="noreferrer"><b>{leader.team}</b></a> · {leader.total} pts</p>}
+              {leader && <p>{result.finished ? "🏆" : "Leader:"} {leader.team} · {leader.total} pts</p>}
             </article>
           );
         })}
@@ -182,19 +200,22 @@ export default function Tour({ standings, events, currentEvent, histories, liveS
             <div className="tieNotice">⚠️ Exact tie remains after the second-Gameweek tiebreak. Tour Points are held until that tie is resolved.</div>
           )}
 
+          {!currentMajor.finished && currentMajor.started && <p>* Provisional positions and Tour Points until both Gameweeks are final.</p>}
           {currentMajor.ranked.length ? (
             <div className="tableWrap noMax">
               <table>
                 <thead>
-                  <tr><th>#</th><th>Team / Manager</th><th>GW{currentMajor.major.gw1}</th><th>GW{currentMajor.major.gw2}</th><th>Total</th><th>Tour Pts</th></tr>
+                  <tr><th>#</th><th>Team / Manager</th><th>GW{currentMajor.major.gw1} Pts</th><th>GW{currentMajor.major.gw1} Hit</th><th>GW{currentMajor.major.gw2} Pts</th><th>GW{currentMajor.major.gw2} Hit</th><th>Net Total</th><th>{currentMajor.finished ? "Tour Pts" : "Live Tour Pts*"}</th></tr>
                 </thead>
                 <tbody>
                   {currentMajor.ranked.map((row, index) => (
                     <tr key={row.entry}>
                       <td className="rank">{index + 1}</td>
-                      <td><a className="teamLink" href={`https://fantasy.premierleague.com/en/entry/${row.entry}/event/${currentEvent.id}`} target="_blank" rel="noreferrer"><b>{row.team}</b><small>{row.manager}</small></a></td>
-                      <td>{row.gw1 ?? "—"}</td>
-                      <td>{row.gw2 ?? "—"}</td>
+                      <td><b>{row.team}</b><small className="blockMuted">{row.manager}</small></td>
+                      <td>{row.gw1Raw ?? "—"}</td>
+                      <td>{row.gw1Raw === null ? "—" : row.gw1Hit ? `−${row.gw1Hit}` : "0"}</td>
+                      <td>{row.gw2Raw ?? "—"}</td>
+                      <td>{row.gw2Raw === null ? "—" : row.gw2Hit ? `−${row.gw2Hit}` : "0"}</td>
                       <td><b>{row.total ?? "—"}</b></td>
                       <td>{index < 6 ? <span className="tourPoints">+{TOUR_POINTS[index]}</span> : "—"}</td>
                     </tr>
@@ -209,7 +230,8 @@ export default function Tour({ standings, events, currentEvent, histories, liveS
       )}
 
       <article className="card tourStandings">
-        <div className="cardHead"><h2>Tour Standings</h2><span>Champion £50</span></div>
+        <div className="cardHead"><h2>Tour Standings {liveMajor ? "(Live / Provisional)" : ""}</h2><span>Champion £50</span></div>
+        {liveMajor && <p>Live Tour Points are provisional and will update with FPL scores. Final points are confirmed after the Major finishes.</p>}
         <div className="tableWrap noMax">
           <table>
             <thead><tr><th>#</th><th>Team / Manager</th><th>Pts</th><th>Wins</th><th>2nds</th><th>3rds</th></tr></thead>
@@ -217,7 +239,7 @@ export default function Tour({ standings, events, currentEvent, histories, liveS
               {rankedTour.map((row, index) => (
                 <tr key={row.entry}>
                   <td className="rank">{index + 1}</td>
-                  <td><a className="teamLink" href={`https://fantasy.premierleague.com/en/entry/${row.entry}/event/${currentEvent.id}`} target="_blank" rel="noreferrer"><b>{row.team}</b><small>{row.manager}</small></a></td>
+                  <td><b>{row.team}</b><small className="blockMuted">{row.manager}</small></td>
                   <td><b>{row.points}</b></td>
                   <td>{row.wins}</td>
                   <td>{row.seconds}</td>
@@ -236,7 +258,7 @@ export default function Tour({ standings, events, currentEvent, histories, liveS
           <span>2️⃣ Most 2nd-place finishes</span>
           <span>3️⃣ Most 3rd-place finishes</span>
           <span>4️⃣ Overall FPL position after Major 4</span>
-          <p>Major ties are decided by the higher score in the second Gameweek.</p>
+          <p>Major scores are player points minus transfer hits in each Gameweek. Major ties are decided by the higher net score in the second Gameweek.</p>
         </div>
       </article>
     </section>
