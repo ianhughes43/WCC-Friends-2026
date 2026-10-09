@@ -52,29 +52,16 @@ export default function SquidGame({
   histories,
   liveScores,
 }: SquidGameProps) {
-  // Work out the actually active Gameweek from the deadlines.
-  // This avoids relying on FPL's is_current/is_next flags, which can lag or
-  // briefly point at the wrong event while a Gameweek is live.
+  // Use the most recent passed deadline, with the bootstrap current event as
+  // a fallback if the API omits deadlines. Never process the active GW.
   const now = Date.now();
   const startedEvents = events
-    .filter((event) => new Date(event.deadline_time).getTime() <= now)
+    .filter((event) => Number.isFinite(Date.parse(event.deadline_time)) && Date.parse(event.deadline_time) <= now)
     .sort((a, b) => b.id - a.id);
-
   const activeEvent = startedEvents[0] || currentEvent;
   const activeGwId = activeEvent.id;
-
-  // A Squid GW can only be processed if it is BEFORE the active live GW,
-  // or FPL has explicitly marked it finished. The active GW itself is NEVER
-  // allowed into elimination/tie processing.
-  // Only Gameweeks strictly BEFORE the active GW can ever be processed.
-  // This hard-blocks live GW5 from creating a 0-point tie.
   const completedSquidGws = events
-    .filter(
-      (event) =>
-        event.id >= SQUID_START_GW &&
-        event.id <= SQUID_FINAL_GW &&
-        event.id < activeGwId
-    )
+    .filter((event) => event.id >= SQUID_START_GW && event.id <= SQUID_FINAL_GW && event.id < activeGwId)
     .map((event) => event.id)
     .sort((a, b) => a - b);
 
@@ -88,7 +75,8 @@ export default function SquidGame({
       .filter(({ manager }) => alive.has(manager.entry))
       .map(({ manager, history }) => {
         const gwHistory = history.current.find((row) => row.event === gw);
-        const points = gwHistory?.points ?? null;
+        const officialPoints = gwHistory?.points ?? null;
+        const points = officialPoints === null ? null : officialPoints + transferCost(gwHistory);
         const cost = transferCost(gwHistory);
         return {
           entry: manager.entry,
@@ -96,7 +84,7 @@ export default function SquidGame({
           manager: manager.player_name,
           points,
           transferCost: cost,
-          squidPoints: points === null ? null : points - cost,
+          squidPoints: points,
         };
       })
       .filter(
@@ -112,7 +100,8 @@ export default function SquidGame({
         } => result.points !== null && result.squidPoints !== null
       );
 
-    if (!scores.length) continue;
+    // Never declare an elimination from an incomplete set of manager scores.
+    if (scores.length !== alive.size) break;
 
     const lowestScore = Math.min(...scores.map((result) => result.squidPoints));
     const lowestManagers = scores.filter((result) => result.squidPoints === lowestScore);
@@ -150,20 +139,22 @@ export default function SquidGame({
   const liveGwActive =
     activeGwId >= SQUID_START_GW &&
     activeGwId <= SQUID_FINAL_GW &&
+    !activeEvent.finished &&
     !pendingTie;
 
   const liveRows = aliveManagers
     .map((manager) => {
-      const points = liveScores[manager.entry];
+      const officialPoints = liveScores[manager.entry];
       const historyRow = histories
         .find(({ manager: historyManager }) => historyManager.entry === manager.entry)
         ?.history.current.find((row) => row.event === activeGwId);
       const cost = transferCost(historyRow);
+      const points = typeof officialPoints === "number" ? officialPoints + cost : officialPoints;
       return {
         ...manager,
         points,
         transferCost: cost,
-        squidPoints: typeof points === "number" ? points - cost : points,
+        squidPoints: points,
       };
     })
     .filter((manager) => typeof manager.squidPoints === "number")
@@ -188,7 +179,7 @@ export default function SquidGame({
 
       <div className="ruleStrip">
         <span>🏆 Winner £100</span>
-        <span>⚡ Transfer hits count</span>
+        <span>⚡ Transfer hits included in official FPL GW score</span>
         <span>🔄 Live scores auto-refresh</span>
       </div>
 
@@ -220,7 +211,7 @@ export default function SquidGame({
       {liveGwActive && (
         <article className="card liveCard">
           <div className="cardHead">
-            <h2>🔴 {activeEvent.name} Live Survival</h2>
+            <h2>🔴 Gameweek {activeGwId} Live Survival</h2>
             <span>auto 60s</span>
           </div>
           {liveRows.length > 0 ? (
