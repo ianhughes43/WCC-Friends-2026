@@ -116,10 +116,13 @@ export default function Tour({ standings, events, currentEvent, histories, liveS
 
     const finished = eventFinished(events, major.gw2);
     const started = startedGw.has(major.gw1) || startedGw.has(major.gw2);
+    // Preview opens when the preceding GW is officially closed, before
+    // the first Major GW deadline. Preview is NOT scored as live.
+    const preview = !started && (events.find((event) => event.id === major.gw1 - 1)?.finished ?? false);
     const ranked = rankMajor(rows);
     const unresolvedTie = finished && unresolvedTopSixTie(rows);
 
-    return { major, rows, ranked, finished, started, unresolvedTie };
+    return { major, rows, ranked, finished, started, preview, unresolvedTie };
   });
 
   const tourTable = standings.map((manager) => ({
@@ -159,6 +162,7 @@ export default function Tour({ standings, events, currentEvent, histories, liveS
   );
 
   const currentMajor = majorRows.find((result) => result.started && !result.finished)
+    || majorRows.find((result) => result.preview)
     || majorRows.find((result) => !result.started)
     || majorRows[majorRows.length - 1];
 
@@ -183,10 +187,10 @@ export default function Tour({ standings, events, currentEvent, histories, liveS
       <div className="majorCards">
         {majorRows.map((result) => {
           const leader = result.ranked[0];
-          const status = result.finished ? "FINAL" : result.started ? "LIVE" : "UPCOMING";
+          const status = result.finished ? "FINAL" : result.started ? "LIVE" : result.preview ? "ACTIVE · PREVIEW" : "UPCOMING";
           return (
             <article className="majorCard" key={result.major.id}>
-              <div className="majorTop"><span>{result.major.name}</span><b className={`status ${status.toLowerCase()}`}>{status}</b></div>
+              <div className="majorTop"><span>{result.major.name}</span><b className={`status ${result.finished ? "final" : result.started ? "live" : result.preview ? "live" : "upcoming"}`}>{status}</b></div>
               <strong>GW{result.major.gw1} + GW{result.major.gw2}</strong>
               <small>Winner £30</small>
               {leader && <p>{result.finished ? "🏆" : "Leader:"} {leader.team} · {leader.total} pts</p>}
@@ -198,7 +202,7 @@ export default function Tour({ standings, events, currentEvent, histories, liveS
       {currentMajor && (
         <article className="card featureMajor">
           <div className="cardHead">
-            <h2>{currentMajor.finished ? `${currentMajor.major.name} Final` : currentMajor.started ? `${currentMajor.major.name} Live` : `Next: ${currentMajor.major.name}`}</h2>
+            <h2>{currentMajor.finished ? `${currentMajor.major.name} Final` : currentMajor.started ? `${currentMajor.major.name} Live` : currentMajor.preview ? `${currentMajor.major.name} Active — Preview` : `Next: ${currentMajor.major.name}`}</h2>
             <span>GW{currentMajor.major.gw1} + GW{currentMajor.major.gw2}</span>
           </div>
 
@@ -233,6 +237,8 @@ export default function Tour({ standings, events, currentEvent, histories, liveS
             <div className="emptyState">
               {currentMajor.started
                 ? "Major underway — waiting for FPL to publish Gameweek scores."
+                : currentMajor.preview
+                ? `Major ${currentMajor.major.id} is active. GW${currentMajor.major.gw1} starts at its deadline; live scores and provisional Tour Points will appear when FPL publishes them.`
                 : "This Major has not started yet."}
             </div>
           )}
