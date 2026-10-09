@@ -61,7 +61,7 @@ export default function SquidGame({
   const activeEvent = startedEvents[0] || currentEvent;
   const activeGwId = activeEvent.id;
   const completedSquidGws = events
-    .filter((event) => event.id >= SQUID_START_GW && event.id <= SQUID_FINAL_GW && event.id < activeGwId)
+    .filter((event) => event.id >= SQUID_START_GW && event.id <= SQUID_FINAL_GW && (event.id < activeGwId || (event.id === activeGwId && event.finished)))
     .map((event) => event.id)
     .sort((a, b) => a - b);
 
@@ -70,13 +70,13 @@ export default function SquidGame({
   let pendingTie: PendingTie | null = null;
 
   for (const gw of completedSquidGws) {
-    if (gw >= activeGwId) continue;
+    if (gw > activeGwId || (gw === activeGwId && !events.find((e) => e.id === gw)?.finished)) continue;
     const scores = histories
       .filter(({ manager }) => alive.has(manager.entry))
       .map(({ manager, history }) => {
         const gwHistory = history.current.find((row) => row.event === gw);
         const officialPoints = gwHistory?.points ?? null;
-        const points = officialPoints === null ? null : officialPoints + transferCost(gwHistory);
+        const points = officialPoints;
         const cost = transferCost(gwHistory);
         return {
           entry: manager.entry,
@@ -84,7 +84,7 @@ export default function SquidGame({
           manager: manager.player_name,
           points,
           transferCost: cost,
-          squidPoints: points,
+          squidPoints: points === null ? null : points - cost,
         };
       })
       .filter(
@@ -149,12 +149,12 @@ export default function SquidGame({
         .find(({ manager: historyManager }) => historyManager.entry === manager.entry)
         ?.history.current.find((row) => row.event === activeGwId);
       const cost = transferCost(historyRow);
-      const points = typeof officialPoints === "number" ? officialPoints + cost : officialPoints;
+      const points = officialPoints;
       return {
         ...manager,
         points,
         transferCost: cost,
-        squidPoints: points,
+        squidPoints: typeof points === "number" ? points - cost : points,
       };
     })
     .filter((manager) => typeof manager.squidPoints === "number")
@@ -179,7 +179,7 @@ export default function SquidGame({
 
       <div className="ruleStrip">
         <span>🏆 Winner £100</span>
-        <span>⚡ Transfer hits included in official FPL GW score</span>
+        <span>⚡ Squid points = player points − transfer cost</span>
         <span>🔄 Live scores auto-refresh</span>
       </div>
 
