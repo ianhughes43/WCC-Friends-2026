@@ -221,7 +221,7 @@ export default function Tour({ standings, events, currentEvent, histories, liveS
                   {currentMajor.ranked.map((row, index) => (
                     <tr key={row.entry}>
                       <td className="rank">{index + 1}</td>
-                      <td><b>{row.team}</b><small className="blockMuted">{row.manager}</small></td>
+                      <td><a href={`https://fantasy.premierleague.com/en/entry/${row.entry}/event/${currentEvent.id}`} target="_blank" rel="noopener noreferrer" style={{ color: "inherit", textDecoration: "underline", textUnderlineOffset: "3px" }}><b>{row.team}</b><small className="blockMuted">{row.manager}</small></a></td>
                       <td>{row.gw1Raw ?? "—"}</td>
                       <td>{row.gw1Raw === null ? "—" : row.gw1Hit ? `−${row.gw1Hit}` : "0"}</td>
                       <td>{row.gw2Raw ?? "—"}</td>
@@ -255,7 +255,7 @@ export default function Tour({ standings, events, currentEvent, histories, liveS
               {rankedTour.map((row, index) => (
                 <tr key={row.entry}>
                   <td className="rank">{index + 1}</td>
-                  <td><b>{row.team}</b><small className="blockMuted">{row.manager}</small></td>
+                  <td><a href={`https://fantasy.premierleague.com/en/entry/${row.entry}/event/${currentEvent.id}`} target="_blank" rel="noopener noreferrer" style={{ color: "inherit", textDecoration: "underline", textUnderlineOffset: "3px" }}><b>{row.team}</b><small className="blockMuted">{row.manager}</small></a></td>
                   <td><b>{row.points}</b></td>
                   <td>{row.wins}</td>
                   <td>{row.seconds}</td>
