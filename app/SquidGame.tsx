@@ -221,7 +221,7 @@ export default function SquidGame({
             <div className="tableWrap noMax">
               <table>
                 <thead>
-                  <tr><th>Zone</th><th>Team / Manager</th><th>Points</th><th>Played</th><th>FT*</th><th>Transfer Cost</th><th>Squid</th></tr>
+                  <tr><th>Zone</th><th>Team / Manager</th><th>Points</th><th>Played</th><th>Transfer Cost</th><th>Squid</th></tr>
                 </thead>
                 <tbody>
                   {liveRows.map((manager) => {

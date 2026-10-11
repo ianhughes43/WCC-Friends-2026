@@ -97,7 +97,7 @@ export default async function Home() {
           <div className="cardHead"><h2>League Standings</h2><span>Live · auto 60s</span></div>
           <div className="tableWrap standingsTable">
             <table>
-              <thead><tr><th>#</th><th>Team / Manager</th><th>GW</th><th>Played</th><th>FT*</th><th>Total</th><th>Move</th></tr></thead>
+              <thead><tr><th>#</th><th>Team / Manager</th><th>GW</th><th>Played</th><th>Total</th><th>Move</th></tr></thead>
               <tbody>
                 {league.standings.map((row) => {
                   const mv = movement(row.rank, row.last_rank);
@@ -120,7 +120,7 @@ export default async function Home() {
             </table>
           </div>
         </article>
-        <p className="participationNote">Played = completed scoring appearances (captain ×2, Triple Captain ×3). FT* = estimated start-of-GW balance; after the GW is marked finished, projected FT for the next GW. Not a confirmed live balance. — means unavailable.</p>
+        <p className="participationNote">Played = scoring appearances (captain ×2, Triple Captain ×3). — means unavailable.</p>
       </section>
     );
 

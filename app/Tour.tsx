@@ -217,7 +217,7 @@ export default function Tour({ standings, events, currentEvent, histories, liveS
             <div className="tableWrap noMax">
               <table>
                 <thead>
-                  <tr><th>#</th><th>Team / Manager</th><th>GW{currentMajor.major.gw1} Pts</th><th>GW{currentMajor.major.gw1} Hit</th><th>GW{currentMajor.major.gw2} Pts</th><th>GW{currentMajor.major.gw2} Hit</th><th>Played</th><th>FT*</th><th>Net Total</th><th>{currentMajor.finished ? "Tour Pts" : "Live Tour Pts*"}</th></tr>
+                  <tr><th>#</th><th>Team / Manager</th><th>GW{currentMajor.major.gw1} Pts</th><th>GW{currentMajor.major.gw1} Hit</th><th>GW{currentMajor.major.gw2} Pts</th><th>GW{currentMajor.major.gw2} Hit</th><th>Played</th><th>Net Total</th><th>{currentMajor.finished ? "Tour Pts" : "Live Tour Pts*"}</th></tr>
                 </thead>
                 <tbody>
                   {currentMajor.ranked.map((row, index) => (
@@ -253,7 +253,7 @@ export default function Tour({ standings, events, currentEvent, histories, liveS
         {liveMajor && <p>Live Tour Points are provisional and will update with FPL scores. Final points are confirmed after the Major finishes.</p>}
         <div className="tableWrap noMax">
           <table>
-            <thead><tr><th>#</th><th>Team / Manager</th><th>Pts</th><th>Played</th><th>FT*</th><th>Wins</th><th>2nds</th><th>3rds</th></tr></thead>
+            <thead><tr><th>#</th><th>Team / Manager</th><th>Pts</th><th>Played</th><th>Wins</th><th>2nds</th><th>3rds</th></tr></thead>
             <tbody>
               {rankedTour.map((row, index) => (
                 <tr key={row.entry}>
