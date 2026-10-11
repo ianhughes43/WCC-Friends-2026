@@ -53,7 +53,7 @@ export default async function Home() {
       histories.map(({ manager, history }, index) => [
         manager.entry,
         deadlinePassed && fixtures.length && live.length
-          ? calculateParticipation(picks[index], history, current.id, elementToTeam, fixtures, live)
+          ? calculateParticipation(picks[index], history, current.id, elementToTeam, fixtures, live, current.finished)
           : undefined,
       ])
     );
@@ -120,7 +120,7 @@ export default async function Home() {
             </table>
           </div>
         </article>
-        <p className="participationNote">Played = completed scoring appearances (captain ×2, Triple Captain ×3). FT* = estimated free transfers at the start of the Gameweek, not a confirmed live balance. — means unavailable.</p>
+        <p className="participationNote">Played = completed scoring appearances (captain ×2, Triple Captain ×3). FT* = estimated start-of-GW balance; after the GW is marked finished, projected FT for the next GW. Not a confirmed live balance. — means unavailable.</p>
       </section>
     );
 

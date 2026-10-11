@@ -5,7 +5,7 @@ type LiveElement = { id: number; stats: { minutes: number } };
 
 // Public transfer history gives an estimate, not a confirmed current FT balance.
 // FPL's 2024+ rules permit banking up to five free transfers.
-function estimatedFT(history: EntryHistoryResponse, gw: number): number | null {
+function estimatedFT(history: EntryHistoryResponse, gw: number, projectNext = false): number | null {
   if (gw < 1) return null;
   // GW1 has no free transfer: the first FT becomes available in GW2.
   let available = 0;
@@ -25,6 +25,14 @@ function estimatedFT(history: EntryHistoryResponse, gw: number): number | null {
       available = Math.min(5, Math.max(0, available - used) + 1);
     }
   }
+  if (projectNext) {
+    const row = rows.get(gw);
+    if (!row) return null;
+    const chip = chips.get(gw);
+    if (chip !== "wildcard" && chip !== "freehit") {
+      available = Math.min(5, Math.max(0, available - row.event_transfers) + 1);
+    }
+  }
   return available;
 }
 
@@ -34,10 +42,11 @@ export function calculateParticipation(
   gw: number,
   elementToTeam: Map<number, number>,
   fixtures: Fixture[],
-  live: LiveElement[]
+  live: LiveElement[],
+  projectNext = false
 ): Participation | undefined {
   if (!picks) return undefined;
-  const ft = estimatedFT(history, gw);
+  const ft = estimatedFT(history, gw, projectNext);
   const minutes = new Map(live.map(element => [element.id, element.stats.minutes]));
   const fixturesByTeam = new Map<number, Fixture[]>();
   for (const fixture of fixtures) {
@@ -55,7 +64,7 @@ export function calculateParticipation(
     total += multiplier;
     const team = elementToTeam.get(pick.element);
     const matches = team == null ? [] : fixturesByTeam.get(team) || [];
-    if (matches.length > 0 && matches.every(match => match.finished) && (minutes.get(pick.element) ?? 0) > 0) {
+    if (matches.length > 0 && (minutes.get(pick.element) ?? 0) > 0) {
       played += multiplier;
     }
   }
