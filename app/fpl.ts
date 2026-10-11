@@ -105,7 +105,7 @@ export async function getEventLive(eventId: number) {
   return fplFetchLive<{
     elements: {
       id: number;
-      stats: { total_points: number };
+      stats: { total_points: number; minutes: number };
     }[];
   }>(`/event/${eventId}/live/`);
 }

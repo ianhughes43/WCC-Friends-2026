@@ -1,3 +1,4 @@
+import { ParticipationCells, Participation } from "./Participation";
 import { EntryHistoryResponse, FplEvent, LeagueStanding } from "./types";
 
 type HistoryBundle = {
@@ -11,6 +12,7 @@ type TourProps = {
   currentEvent: FplEvent;
   histories: HistoryBundle[];
   liveScores: Record<number, number>;
+  participation: Record<number, Participation | undefined>;
 };
 
 type Major = {
@@ -86,7 +88,7 @@ function unresolvedTopSixTie(rows: MajorRow[]) {
   return false;
 }
 
-export default function Tour({ standings, events, currentEvent, histories, liveScores }: TourProps) {
+export default function Tour({ standings, events, currentEvent, histories, liveScores, participation }: TourProps) {
   // Determine which Gameweeks have actually begun from their deadlines,
   // independently of delayed FPL current/finished flags or history publication.
   const now = Date.now();
@@ -215,7 +217,7 @@ export default function Tour({ standings, events, currentEvent, histories, liveS
             <div className="tableWrap noMax">
               <table>
                 <thead>
-                  <tr><th>#</th><th>Team / Manager</th><th>GW{currentMajor.major.gw1} Pts</th><th>GW{currentMajor.major.gw1} Hit</th><th>GW{currentMajor.major.gw2} Pts</th><th>GW{currentMajor.major.gw2} Hit</th><th>Net Total</th><th>{currentMajor.finished ? "Tour Pts" : "Live Tour Pts*"}</th></tr>
+                  <tr><th>#</th><th>Team / Manager</th><th>GW{currentMajor.major.gw1} Pts</th><th>GW{currentMajor.major.gw1} Hit</th><th>GW{currentMajor.major.gw2} Pts</th><th>GW{currentMajor.major.gw2} Hit</th><th>Played</th><th>FT*</th><th>Net Total</th><th>{currentMajor.finished ? "Tour Pts" : "Live Tour Pts*"}</th></tr>
                 </thead>
                 <tbody>
                   {currentMajor.ranked.map((row, index) => (
@@ -226,6 +228,7 @@ export default function Tour({ standings, events, currentEvent, histories, liveS
                       <td>{row.gw1Raw === null ? "—" : row.gw1Hit ? `−${row.gw1Hit}` : "0"}</td>
                       <td>{row.gw2Raw ?? "—"}</td>
                       <td>{row.gw2Raw === null ? "—" : row.gw2Hit ? `−${row.gw2Hit}` : "0"}</td>
+                      <ParticipationCells value={participation[row.entry]} />
                       <td><b>{row.total ?? "—"}</b></td>
                       <td>{index < 6 ? <span className="tourPoints">+{TOUR_POINTS[index]}</span> : "—"}</td>
                     </tr>
@@ -250,13 +253,14 @@ export default function Tour({ standings, events, currentEvent, histories, liveS
         {liveMajor && <p>Live Tour Points are provisional and will update with FPL scores. Final points are confirmed after the Major finishes.</p>}
         <div className="tableWrap noMax">
           <table>
-            <thead><tr><th>#</th><th>Team / Manager</th><th>Pts</th><th>Wins</th><th>2nds</th><th>3rds</th></tr></thead>
+            <thead><tr><th>#</th><th>Team / Manager</th><th>Pts</th><th>Played</th><th>FT*</th><th>Wins</th><th>2nds</th><th>3rds</th></tr></thead>
             <tbody>
               {rankedTour.map((row, index) => (
                 <tr key={row.entry}>
                   <td className="rank">{index + 1}</td>
                   <td><a href={`https://fantasy.premierleague.com/en/entry/${row.entry}/event/${currentEvent.id}`} target="_blank" rel="noopener noreferrer" style={{ color: "inherit", textDecoration: "underline", textUnderlineOffset: "3px" }}><b>{row.team}</b><small className="blockMuted">{row.manager}</small></a></td>
                   <td><b>{row.points}</b></td>
+                  <ParticipationCells value={participation[row.entry]} />
                   <td>{row.wins}</td>
                   <td>{row.seconds}</td>
                   <td>{row.thirds}</td>

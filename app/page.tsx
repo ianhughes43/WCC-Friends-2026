@@ -3,7 +3,9 @@ import CompetitionTabs from "./CompetitionTabs";
 import Countdown from "./Countdown";
 import SquidGame from "./SquidGame";
 import Tour from "./Tour";
-import { getBootstrap, getEntryHistory, getLeague } from "./fpl";
+import { ParticipationCells } from "./Participation";
+import { calculateParticipation } from "./participation";
+import { getBootstrap, getEntryEventPicks, getEntryHistory, getEventLive, getFixtures, getLeague } from "./fpl";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +36,26 @@ export default async function Home() {
         manager,
         history: await getEntryHistory(manager.entry),
       }))
+    );
+
+    const deadlinePassed = Date.now() >= Date.parse(current.deadline_time);
+    const [fixtures, live] = await Promise.all([
+      getFixtures(current.id).catch(() => []),
+      deadlinePassed ? getEventLive(current.id).then(data => data.elements).catch(() => []) : Promise.resolve([]),
+    ]);
+    const picks = deadlinePassed ? await Promise.all(
+      league.standings.map(manager =>
+        getEntryEventPicks(manager.entry, current.id).catch(() => null)
+      )
+    ) : league.standings.map(() => null);
+    const elementToTeam = new Map(bootstrap.elements.map(element => [element.id, element.team]));
+    const participation = Object.fromEntries(
+      histories.map(({ manager, history }, index) => [
+        manager.entry,
+        deadlinePassed && fixtures.length && live.length
+          ? calculateParticipation(picks[index], history, current.id, elementToTeam, fixtures, live)
+          : undefined,
+      ])
     );
 
     // Use the exact Gameweek score already shown in the official FPL league standings.
@@ -75,7 +97,7 @@ export default async function Home() {
           <div className="cardHead"><h2>League Standings</h2><span>Live · auto 60s</span></div>
           <div className="tableWrap standingsTable">
             <table>
-              <thead><tr><th>#</th><th>Team / Manager</th><th>GW</th><th>Total</th><th>Move</th></tr></thead>
+              <thead><tr><th>#</th><th>Team / Manager</th><th>GW</th><th>Played</th><th>FT*</th><th>Total</th><th>Move</th></tr></thead>
               <tbody>
                 {league.standings.map((row) => {
                   const mv = movement(row.rank, row.last_rank);
@@ -88,6 +110,7 @@ export default async function Home() {
                       </td>
                       <td><a className="teamLink" href={`https://fantasy.premierleague.com/en/entry/${row.entry}/event/${current.id}`} target="_blank" rel="noreferrer"><b>{row.entry_name}</b><small>{row.player_name}</small></a></td>
                       <td>{row.event_total ?? "—"}</td>
+                      <ParticipationCells value={participation[row.entry]} />
                       <td><b>{row.total}</b></td>
                       <td><span className={mv.cls}>{mv.symbol}</span></td>
                     </tr>
@@ -97,6 +120,7 @@ export default async function Home() {
             </table>
           </div>
         </article>
+        <p className="participationNote">Played = completed scoring appearances (captain ×2, Triple Captain ×3). FT* = estimated free transfers at the start of the Gameweek, not a confirmed live balance. — means unavailable.</p>
       </section>
     );
 
@@ -107,6 +131,7 @@ export default async function Home() {
         currentEvent={current}
         histories={histories}
         liveScores={liveScores}
+        participation={participation}
       />
     );
 
@@ -117,6 +142,7 @@ export default async function Home() {
         currentEvent={current}
         histories={histories}
         liveScores={liveScores}
+        participation={participation}
       />
     );
 

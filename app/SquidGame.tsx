@@ -1,3 +1,4 @@
+import { ParticipationCells, Participation } from "./Participation";
 import { EntryHistoryResponse, FplEvent, LeagueStanding } from "./types";
 
 const SQUID_START_GW = 4;
@@ -14,6 +15,7 @@ type SquidGameProps = {
   currentEvent: FplEvent;
   histories: HistoryBundle[];
   liveScores: Record<number, number>;
+  participation: Record<number, Participation | undefined>;
 };
 
 type Elimination = {
@@ -51,6 +53,7 @@ export default function SquidGame({
   currentEvent,
   histories,
   liveScores,
+  participation,
 }: SquidGameProps) {
   // Use the most recent passed deadline, with the bootstrap current event as
   // a fallback if the API omits deadlines. Never process the active GW.
@@ -218,7 +221,7 @@ export default function SquidGame({
             <div className="tableWrap noMax">
               <table>
                 <thead>
-                  <tr><th>Zone</th><th>Team / Manager</th><th>Points</th><th>Transfer Cost</th><th>Squid</th></tr>
+                  <tr><th>Zone</th><th>Team / Manager</th><th>Points</th><th>Played</th><th>FT*</th><th>Transfer Cost</th><th>Squid</th></tr>
                 </thead>
                 <tbody>
                   {liveRows.map((manager) => {
@@ -236,6 +239,7 @@ export default function SquidGame({
                         <td><span className={badgeClass}>{label}</span></td>
                         <td><a className="teamLink" href={`https://fantasy.premierleague.com/en/entry/${manager.entry}/event/${activeEvent.id}`} target="_blank" rel="noreferrer"><b>{manager.entry_name}</b><small>{manager.player_name}</small></a></td>
                         <td className="scoreCell"><b>{manager.points}</b></td>
+                        <ParticipationCells value={participation[manager.entry]} />
                         <td className="scoreCell"><b>{manager.transferCost ? `-${manager.transferCost}` : "0"}</b></td>
                         <td className="scoreCell"><b>{manager.squidPoints}</b></td>
                       </tr>
