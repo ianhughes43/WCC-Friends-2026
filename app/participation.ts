@@ -7,7 +7,8 @@ type LiveElement = { id: number; stats: { minutes: number } };
 // FPL's 2024+ rules permit banking up to five free transfers.
 function estimatedFT(history: EntryHistoryResponse, gw: number): number | null {
   if (gw < 1) return null;
-  let available = 1;
+  // GW1 has no free transfer: the first FT becomes available in GW2.
+  let available = 0;
   const rows = new Map(history.current.map(row => [row.event, row]));
   const chips = new Map((history.chips as { event?: number; name?: string }[]).map(chip => [chip.event, chip.name]));
   for (let week = 1; week < gw; week++) {
@@ -15,10 +16,13 @@ function estimatedFT(history: EntryHistoryResponse, gw: number): number | null {
     if (!row) return null;
     const chip = chips.get(week);
     if (chip === "wildcard" || chip === "freehit") {
-      // Banked transfers survive these chips under current FPL rules.
-      available = Math.min(5, available + 1);
+      // These chips preserve the existing FT bank; they do not add an FT.
+      // GW1 is exceptional: GW2 still starts with its first free transfer.
+      if (week === 1) available = 1;
     } else {
-      available = Math.min(5, Math.max(0, available - row.event_transfers) + 1);
+      // Transfers in GW1 are initial squad selection, not use of free transfers.
+      const used = week === 1 ? 0 : row.event_transfers;
+      available = Math.min(5, Math.max(0, available - used) + 1);
     }
   }
   return available;
