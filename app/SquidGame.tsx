@@ -1,4 +1,4 @@
-import { getEntryEventPicks, getEventLive } from "./fpl";
+import { getEntryEventPicks, getEventLive, getFixtures } from "./fpl";
 import { ParticipationCells, Participation } from "./Participation";
 import { EntryHistoryResponse, FplEvent, LeagueStanding } from "./types";
 
@@ -67,8 +67,31 @@ export default async function SquidGame({
     .sort((a, b) => b.id - a.id);
   const activeEvent = startedEvents[0] || currentEvent;
   const activeGwId = activeEvent.id;
+  // FPL's Gameweek `finished` flag can lag behind the last fixture.
+  // Close the active GW once all its fixtures are officially finished AND
+  // every league manager has a published history score for that GW.
+  let activeFixturesFinished = false;
+  if (activeGwId >= SQUID_START_GW && activeGwId <= SQUID_FINAL_GW && !activeEvent.finished) {
+    try {
+      const fixtures = await getFixtures(activeGwId);
+      activeFixturesFinished = fixtures.length > 0 && fixtures.every((fixture) => fixture.finished);
+    } catch {
+      // If fixture data is unavailable, wait for FPL's official finished flag.
+    }
+  }
+  const allActiveScoresPublished = standings.every((manager) =>
+    histories.some(({ manager: historicalManager, history }) =>
+      historicalManager.entry === manager.entry &&
+      history.current.some((row) => row.event === activeGwId)
+    )
+  );
+  const activeGwClosed = activeEvent.finished || (activeFixturesFinished && allActiveScoresPublished);
   const completedSquidGws = events
-    .filter((event) => event.id >= SQUID_START_GW && event.id <= SQUID_FINAL_GW && (event.id < activeGwId || (event.id === activeGwId && event.finished)))
+    .filter((event) =>
+      event.id >= SQUID_START_GW &&
+      event.id <= SQUID_FINAL_GW &&
+      (event.id < activeGwId || (event.id === activeGwId && activeGwClosed))
+    )
     .map((event) => event.id)
     .sort((a, b) => a - b);
 
@@ -106,7 +129,7 @@ export default async function SquidGame({
   let pendingTie: PendingTie | null = null;
 
   for (const gw of completedSquidGws) {
-    if (gw > activeGwId || (gw === activeGwId && !events.find((e) => e.id === gw)?.finished)) continue;
+    if (gw > activeGwId || (gw === activeGwId && !activeGwClosed)) continue;
     const scores = histories
       .filter(({ manager }) => alive.has(manager.entry))
       .map(({ manager, history }) => {
@@ -187,7 +210,7 @@ export default async function SquidGame({
   const liveGwActive =
     activeGwId >= SQUID_START_GW &&
     activeGwId <= SQUID_FINAL_GW &&
-    !activeEvent.finished;
+    !activeGwClosed;
 
   const liveRows = aliveManagers
     .map((manager) => {
@@ -298,6 +321,13 @@ export default async function SquidGame({
           ) : (
             <div className="emptyState">Live scores will appear here once FPL publishes this Gameweek&apos;s manager scores.</div>
           )}
+        </article>
+      )}
+
+      {activeGwClosed && activeGwId >= SQUID_START_GW && activeGwId <= SQUID_FINAL_GW && (
+        <article className="card noticeCard">
+          <h3>GW{activeGwId} closed</h3>
+          <p>{pendingTie ? "Elimination tie awaiting resolution; no manager has been removed for this Gameweek." : "Final scores processed. The elimination is shown in Elimination History below."}</p>
         </article>
       )}
 
