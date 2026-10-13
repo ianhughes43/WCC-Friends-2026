@@ -79,7 +79,7 @@ export default async function SquidGame({
     if (!goalsCache.has(gw)) {
       try {
         const live = await getEventLive(gw);
-        goalsCache.set(gw, new Map(live.elements.map((p) => [p.id, p.stats.goals_scored ?? 0])));
+        goalsCache.set(gw, new Map(live.elements.map((p) => [p.id, (p.stats as typeof p.stats & { goals_scored?: number }).goals_scored ?? 0])));
       } catch {
         goalsCache.set(gw, null);
       }
