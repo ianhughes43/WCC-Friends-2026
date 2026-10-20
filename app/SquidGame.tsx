@@ -71,9 +71,11 @@ export default async function SquidGame({
   // Eliminate only after FPL has finalised the Gameweek, including
   // automatic substitutions and final points checks. A completed fixture
   // list or a published history row is NOT evidence of finalisation.
-  const isFinalised = (event: FplEvent): boolean =>
-    event.finished === true &&
-    (event as FplEvent & { data_checked?: boolean }).data_checked === true;
+  // FPL's official event.finished flag marks the Gameweek as closed.
+  // Do not rely on data_checked: it may remain false after the final
+  // Gameweek scores and automatic substitutions have been published.
+  // Crucially, fixture completion alone must NEVER trigger elimination.
+  const isFinalised = (event: FplEvent): boolean => event.finished === true;
   const activeGwClosed = isFinalised(activeEvent);
   const completedSquidGws = events
     .filter((event) =>
