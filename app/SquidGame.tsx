@@ -253,6 +253,34 @@ export default async function SquidGame({
     .filter((manager) => typeof manager.squidPoints === "number")
     .sort((a, b) => a.squidPoints - b.squidPoints || a.rank - b.rank);
 
+  // Show tie-break evidence even when FPL has not yet flagged this GW as final.
+  // This preview never changes alive/eliminated status.
+  const provisionalTied = !activeGwClosed && liveRows.length > 1
+    ? liveRows.filter((row) => row.squidPoints === liveRows[0].squidPoints)
+    : [];
+  const provisionalTieStats = provisionalTied.length > 1
+    ? await Promise.all(provisionalTied.map(async (row) => ({
+        entry: row.entry,
+        team: row.entry_name,
+        manager: row.player_name,
+        stats: await startingStats(row.entry, activeGwId),
+      })))
+    : [];
+  const availableTieStats = provisionalTieStats.every((row) => row.stats !== null);
+  const lowestTieGoals = availableTieStats && provisionalTieStats.length
+    ? Math.min(...provisionalTieStats.map((row) => row.stats!.goals))
+    : null;
+  const lowestGoalsRows = lowestTieGoals === null ? []
+    : provisionalTieStats.filter((row) => row.stats!.goals === lowestTieGoals);
+  const mostTieConceded = lowestGoalsRows.length > 1
+    ? Math.max(...lowestGoalsRows.map((row) => row.stats!.conceded))
+    : null;
+  const likelyEliminated = lowestGoalsRows.length === 1 ? lowestGoalsRows[0]
+    : mostTieConceded === null ? null
+    : lowestGoalsRows.filter((row) => row.stats!.conceded === mostTieConceded).length === 1
+      ? lowestGoalsRows.find((row) => row.stats!.conceded === mostTieConceded) ?? null
+      : null;
+
   const lowestLive = liveRows.length ? liveRows[0].squidPoints : null;
   const hasStarted = completedSquidGws.length > 0 || activeEvent.id >= SQUID_START_GW;
 
@@ -310,6 +338,23 @@ export default async function SquidGame({
             <h2>🔴 Gameweek {activeGwId} Live Survival</h2>
             <span>auto 60s</span>
           </div>
+          {provisionalTieStats.length > 1 && (
+            <div className="warningBody">
+              <p><b>GW{activeGwId} tie-break comparison — provisional until FPL confirms finalisation</b></p>
+              <p>First: fewer original starting XI goals scored loses. Second: more original starting XI goals conceded loses. Captain goals count once.</p>
+              {provisionalTieStats.map((row) => (
+                <div className="simpleRow" key={`tie-preview-${row.entry}`}>
+                  <span>{row.team} ({row.manager})</span>
+                  <strong>{row.stats ? `${row.stats.goals} goals scored · ${row.stats.conceded} conceded` : "FPL player data unavailable"}</strong>
+                </div>
+              ))}
+              <p>{!availableTieStats
+                ? "Tie-break data is not yet available. No elimination can be confirmed."
+                : likelyEliminated
+                  ? `${likelyEliminated.team} is provisionally last after the tie-break. No elimination until FPL marks the Gameweek final.`
+                  : "Still tied after both tie-breakers. An admin decision will be required once scores are final."}</p>
+            </div>
+          )}
           {liveRows.length > 0 ? (
             <div className="tableWrap noMax">
               <table>
