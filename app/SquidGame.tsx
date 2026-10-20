@@ -1,4 +1,4 @@
-import { getEntryEventPicks, getEventLive, getFixtures } from "./fpl";
+import { getEntryEventPicks, getEventLive } from "./fpl";
 import { ParticipationCells, Participation } from "./Participation";
 import { EntryHistoryResponse, FplEvent, LeagueStanding } from "./types";
 
@@ -28,7 +28,7 @@ type Elimination = {
   transferCost: number;
   squidPoints: number;
   startingGoals?: number;
-  tieBreaker?: { opponents: { team: string; goals: number }[] };
+  tieBreaker?: { method: "goals" | "conceded"; opponents: { team: string; goals: number; conceded?: number }[] };
 };
 
 type PendingTie = {
@@ -42,6 +42,7 @@ type PendingTie = {
     transferCost: number;
     squidPoints: number;
     startingGoals?: number;
+    startingConceded?: number;
   }[];
 };
 
@@ -67,58 +68,53 @@ export default async function SquidGame({
     .sort((a, b) => b.id - a.id);
   const activeEvent = startedEvents[0] || currentEvent;
   const activeGwId = activeEvent.id;
-  // FPL's Gameweek `finished` flag can lag behind the last fixture.
-  // Close the active GW once all its fixtures are officially finished AND
-  // every league manager has a published history score for that GW.
-  let activeFixturesFinished = false;
-  if (activeGwId >= SQUID_START_GW && activeGwId <= SQUID_FINAL_GW && !activeEvent.finished) {
-    try {
-      const fixtures = await getFixtures(activeGwId);
-      activeFixturesFinished = fixtures.length > 0 && fixtures.every((fixture) => fixture.finished);
-    } catch {
-      // If fixture data is unavailable, wait for FPL's official finished flag.
-    }
-  }
-  const allActiveScoresPublished = standings.every((manager) =>
-    histories.some(({ manager: historicalManager, history }) =>
-      historicalManager.entry === manager.entry &&
-      history.current.some((row) => row.event === activeGwId)
-    )
-  );
-  const activeGwClosed = activeEvent.finished || (activeFixturesFinished && allActiveScoresPublished);
+  // Eliminate only after FPL has finalised the Gameweek, including
+  // automatic substitutions and final points checks. A completed fixture
+  // list or a published history row is NOT evidence of finalisation.
+  const isFinalised = (event: FplEvent): boolean =>
+    event.finished === true &&
+    (event as FplEvent & { data_checked?: boolean }).data_checked === true;
+  const activeGwClosed = isFinalised(activeEvent);
   const completedSquidGws = events
     .filter((event) =>
       event.id >= SQUID_START_GW &&
       event.id <= SQUID_FINAL_GW &&
-      (event.id < activeGwId || (event.id === activeGwId && activeGwClosed))
+      event.id <= activeGwId &&
+      isFinalised(event)
     )
     .map((event) => event.id)
     .sort((a, b) => a - b);
 
-  // FPL live endpoint reports actual goals for every player in a completed GW.
-  // Only original starting XI positions 1–11 count; captain goals count once.
-  const goalsCache = new Map<number, Map<number, number> | null>();
-  async function startingGoals(entry: number, gw: number): Promise<number | null> {
-    if (!goalsCache.has(gw)) {
+  // Use the original starting XI (positions 1–11), not the bench.
+  // Captaincy does not multiply goals or goals conceded.
+  type PlayerStats = { goals: number; conceded: number };
+  const statsCache = new Map<number, Map<number, PlayerStats> | null>();
+  async function startingStats(entry: number, gw: number): Promise<{ goals: number; conceded: number } | null> {
+    if (!statsCache.has(gw)) {
       try {
         const live = await getEventLive(gw);
-        goalsCache.set(gw, new Map(live.elements.map((p) => [p.id, (p.stats as typeof p.stats & { goals_scored?: number }).goals_scored ?? 0])));
+        statsCache.set(gw, new Map(live.elements.map((p) => {
+          const stats = p.stats as typeof p.stats & { goals_scored?: number; goals_conceded?: number };
+          return [p.id, { goals: stats.goals_scored ?? 0, conceded: stats.goals_conceded ?? 0 }];
+        })));
       } catch {
-        goalsCache.set(gw, null);
+        statsCache.set(gw, null);
       }
     }
-    const goals = goalsCache.get(gw);
-    if (!goals) return null;
+    const stats = statsCache.get(gw);
+    if (!stats) return null;
     try {
       const picks = await getEntryEventPicks(entry, gw);
       if (!picks?.picks || picks.picks.length < 11) return null;
-      let total = 0;
+      let goals = 0;
+      let conceded = 0;
       for (const pick of picks.picks.filter((p) => p.position <= 11)) {
-        const count = goals.get(pick.element);
-        if (count === undefined) return null;
-        total += count;
+        const player = stats.get(pick.element);
+        if (!player) return null;
+        goals += player.goals;
+        conceded += player.conceded;
       }
-      return total;
+      return { goals, conceded };
     } catch {
       return null;
     }
@@ -168,27 +164,47 @@ export default async function SquidGame({
     let eliminationCandidates = lowestManagers;
     let tieBreaker: Elimination["tieBreaker"];
     if (lowestManagers.length > 1) {
-      const goalCounts = await Promise.all(lowestManagers.map(async (result) => ({
+      const statsRows = await Promise.all(lowestManagers.map(async (result) => ({
         ...result,
-        startingGoals: await startingGoals(result.entry, gw),
+        startingStats: await startingStats(result.entry, gw),
       })));
-      // Never decide a tie if FPL goal data or picks are unavailable.
-      if (goalCounts.some((result) => result.startingGoals === null)) {
-        pendingTie = { gw, points: lowestScore, managers: goalCounts.map((result) => ({
-          ...result, startingGoals: result.startingGoals ?? undefined,
-        })) };
+      // Missing data must never trigger an elimination.
+      const pendingManagers = statsRows.map(({ startingStats, ...result }) => ({
+        ...result,
+        startingGoals: startingStats?.goals,
+        startingConceded: startingStats?.conceded,
+      }));
+      if (statsRows.some((result) => result.startingStats === null)) {
+        pendingTie = { gw, points: lowestScore, managers: pendingManagers };
         break;
       }
-      const fewestGoals = Math.min(...goalCounts.map((result) => result.startingGoals!));
-      eliminationCandidates = goalCounts.filter((result) => result.startingGoals === fewestGoals);
-      if (eliminationCandidates.length === 1) {
-        tieBreaker = { opponents: goalCounts.map((result) => ({ team: result.team, goals: result.startingGoals! })) };
-      }
-      if (eliminationCandidates.length > 1) {
-        pendingTie = { gw, points: lowestScore, managers: goalCounts.map((result) => ({
-          ...result, startingGoals: result.startingGoals ?? undefined,
-        })) };
-        break;
+
+      const fewestGoals = Math.min(...statsRows.map((result) => result.startingStats!.goals));
+      const goalsTied = statsRows.filter((result) => result.startingStats!.goals === fewestGoals);
+      if (goalsTied.length === 1) {
+        eliminationCandidates = goalsTied;
+        tieBreaker = {
+          method: "goals",
+          opponents: statsRows.map((result) => ({ team: result.team, goals: result.startingStats!.goals })),
+        };
+      } else {
+        // Second tie-break: among managers tied for fewest goals,
+        // the one whose original starting XI conceded MOST is eliminated.
+        const mostConceded = Math.max(...goalsTied.map((result) => result.startingStats!.conceded));
+        const concededTied = goalsTied.filter((result) => result.startingStats!.conceded === mostConceded);
+        if (concededTied.length !== 1) {
+          pendingTie = { gw, points: lowestScore, managers: pendingManagers };
+          break;
+        }
+        eliminationCandidates = concededTied;
+        tieBreaker = {
+          method: "conceded",
+          opponents: statsRows.map((result) => ({
+            team: result.team,
+            goals: result.startingStats!.goals,
+            conceded: result.startingStats!.conceded,
+          })),
+        };
       }
     }
 
@@ -267,11 +283,11 @@ export default async function SquidGame({
             <span>{pendingTie.points} pts</span>
           </div>
           <div className="warningBody">
-            <p>These managers are tied on Squid points. Tie-break: fewer goals scored by the original starting XI is eliminated (captain goals count once). If goals are also tied or FPL data is unavailable, an admin decision is required.</p>
+            <p>These managers are tied on Squid points. Tie-breaks: fewer goals scored by the original starting XI loses; if still tied, more goals conceded by the original starting XI loses. Captaincy does not multiply either statistic. If still tied or data is unavailable, an admin decision is required.</p>
             {pendingTie.managers.map((manager) => (
               <div className="simpleRow" key={manager.entry}>
                 <div><a className="teamLink" href={`https://fantasy.premierleague.com/en/entry/${manager.entry}/event/${activeEvent.id}`} target="_blank" rel="noreferrer"><b>{manager.team}</b><small>{manager.manager}</small></a></div>
-                <strong>{manager.points} - {manager.transferCost} = {manager.squidPoints} · Starting XI goals: {manager.startingGoals ?? "—"}</strong>
+                <strong>{manager.points} - {manager.transferCost} = {manager.squidPoints} · XI goals: {manager.startingGoals ?? "—"} · XI conceded: {manager.startingConceded ?? "—"}</strong>
               </div>
             ))}
           </div>
@@ -281,7 +297,7 @@ export default async function SquidGame({
       {liveGwActive && (
         <article className="card liveCard">
           {pendingTie && pendingTie.gw < activeGwId && (
-            <p className="warningBody">GW{pendingTie.gw} elimination is awaiting a goals tie-break or admin decision. Both tied managers remain in the provisional survival table; no elimination has been applied.</p>
+            <p className="warningBody">GW{pendingTie.gw} elimination is awaiting tie-break data or an admin decision. Both tied managers remain in the provisional survival table; no elimination has been applied.</p>
           )}
           <div className="cardHead">
             <h2>🔴 Gameweek {activeGwId} Live Survival</h2>
@@ -354,7 +370,7 @@ export default async function SquidGame({
                   <div className="grow"><a className="teamLink" href={`https://fantasy.premierleague.com/en/entry/${elimination.entry}/event/${activeEvent.id}`} target="_blank" rel="noreferrer"><b>{elimination.team}</b><small>{elimination.manager}</small></a></div>
                   <div><strong>{elimination.points} - {elimination.transferCost} = {elimination.squidPoints}</strong>
                     {elimination.tieBreaker && (
-                      <div><small><b>Eliminated on tie-breaker — Starting XI goals</b></small><small>{elimination.tieBreaker.opponents.map((opponent) => `${opponent.team}: ${opponent.goals}`).join(" · ")}</small></div>
+                      <div><small><b>Eliminated on tie-breaker — {elimination.tieBreaker.method === "goals" ? "Starting XI goals scored" : "Starting XI goals conceded"}</b></small><small>{elimination.tieBreaker.opponents.map((opponent) => `${opponent.team}: ${opponent.goals} scored${elimination.tieBreaker?.method === "conceded" ? `, ${opponent.conceded} conceded` : ""}`).join(" · ")}</small></div>
                     )}
                   </div>
                 </div>
