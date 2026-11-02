@@ -83,6 +83,10 @@ export function projectAutoSubs(
   if (captain && vice && absent(captain.element) && effective.has(vice.element) && minutes(vice.element) > 0) {
     const extra = response.active_chip === "3xc" ? 2 : 1;
     delta += extra * (points(vice.element) - points(captain.element));
+    // The effective captain multiplier moves from the absent captain to a
+    // playing vice-captain. Participation counts multiplier-weighted slots,
+    // so the vice-captain contributes this extra played slot as well.
+    playedDelta += extra;
     if (!confirmedAbsent(captain.element)) potential = true;
   }
   return { points: raw + delta, autoSubDelta: delta, projected: true, playedDelta, potential };
