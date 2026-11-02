@@ -1,8 +1,10 @@
 import AutoRefresh from "./AutoRefresh";
+import { projectAutoSubs } from "./autoSubs";
 import CompetitionTabs from "./CompetitionTabs";
 import Countdown from "./Countdown";
 import SquidGame from "./SquidGame";
 import Tour from "./Tour";
+import GameweekHistory from "./GameweekHistory";
 import { ParticipationCells } from "./Participation";
 import { calculateParticipation } from "./participation";
 import { getBootstrap, getEntryEventPicks, getEntryHistory, getEventLive, getFixtures, getLeague } from "./fpl";
@@ -61,9 +63,17 @@ export default async function Home() {
     // Use the exact Gameweek score already shown in the official FPL league standings.
     // This keeps Squid and Tour aligned with the Overall tab and means FPL itself
     // handles autosubs, captaincy changes, bonus updates and transfer hits.
-    const liveScores = Object.fromEntries(
-      league.standings.map((manager) => [manager.entry, manager.event_total ?? 0])
-    );
+    const projections = Object.fromEntries(league.standings.map((manager, index) => [
+      manager.entry,
+      deadlinePassed && !current.finished && picks[index]
+        ? projectAutoSubs(picks[index]!, live, fixtures, bootstrap.elements, current.finished)
+        : null,
+    ]));
+    // Raw player points only: Squid and Tour subtract transfer hits themselves.
+    const liveScores = Object.fromEntries(league.standings.map((manager) => [
+      manager.entry,
+      projections[manager.entry]?.points ?? manager.event_total ?? 0,
+    ]));
 
     const movers = league.standings
       .map((row) => ({ ...row, move: row.last_rank > 0 ? row.last_rank - row.rank : 0 }))
@@ -94,7 +104,7 @@ export default async function Home() {
         </section>
 
         <article className="card">
-          <div className="cardHead"><h2>League Standings</h2><span>Live · auto 60s</span></div>
+          <div className="cardHead"><h2>League Standings</h2><span>{deadlinePassed && !current.finished ? "Projected auto-subs · auto 60s" : "Official · auto 60s"}</span></div>
           <div className="tableWrap standingsTable">
             <table>
               <thead><tr><th>#</th><th>Team / Manager</th><th>GW</th><th>Played</th><th>Total</th><th>Move</th></tr></thead>
@@ -109,7 +119,7 @@ export default async function Home() {
                          row.rank === 3 ? <><span className="rankPlace">🥉 3rd</span><span className="rankPrize">£30</span></> : row.rank}
                       </td>
                       <td><a className="teamLink" href={`https://fantasy.premierleague.com/en/entry/${row.entry}/event/${current.id}`} target="_blank" rel="noreferrer"><b>{row.entry_name}</b><small>{row.player_name}</small></a></td>
-                      <td>{row.event_total ?? "—"}</td>
+                      <td><b>{liveScores[row.entry]}</b>{projections[row.entry]?.autoSubDelta ? <small style={{display:"block",color:"#7de2b0"}}>Auto-sub {projections[row.entry]!.autoSubDelta > 0 ? "+" : ""}{projections[row.entry]!.autoSubDelta}</small> : null}</td>
                       <ParticipationCells value={participation[row.entry]} />
                       <td><b>{row.total}</b></td>
                       <td><span className={mv.cls}>{mv.symbol}</span></td>
@@ -120,7 +130,7 @@ export default async function Home() {
             </table>
           </div>
         </article>
-        <p className="participationNote">Played = scoring appearances (captain ×2, Triple Captain ×3). — means unavailable.</p>
+        <p className="participationNote">Projected auto-subs are estimates while FPL is live; official totals and eliminations wait for FPL finalisation. Played = scoring appearances (captain ×2, Triple Captain ×3). — means unavailable.</p>
       </section>
     );
 
@@ -159,7 +169,7 @@ export default async function Home() {
           <a className="join" href={`https://fantasy.premierleague.com/leagues/auto-join/${joinCode}`} target="_blank" rel="noreferrer">Join League ↗</a>
         </header>
 
-        <CompetitionTabs overall={overall} squid={squid} tour={tour} />
+        <CompetitionTabs overall={overall} squid={squid} tour={tour} history={<GameweekHistory histories={histories} events={bootstrap.events} />} />
 
         <footer>Unofficial FPL companion for Willoughby Cricket &amp; Friends. Scores refresh from the public Fantasy Premier League endpoints.</footer>
       </main>

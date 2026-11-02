@@ -2,17 +2,18 @@
 
 import { ReactNode, useEffect, useState } from "react";
 
-type TabKey = "overall" | "squid" | "tour";
+type TabKey = "overall" | "squid" | "tour" | "history";
 
 type CompetitionTabsProps = {
   overall: ReactNode;
   squid: ReactNode;
   tour: ReactNode;
+  history: ReactNode;
 };
 
-const validTabs: TabKey[] = ["overall", "squid", "tour"];
+const validTabs: TabKey[] = ["overall", "squid", "tour", "history"];
 
-export default function CompetitionTabs({ overall, squid, tour }: CompetitionTabsProps) {
+export default function CompetitionTabs({ overall, squid, tour, history }: CompetitionTabsProps) {
   const [active, setActive] = useState<TabKey>("overall");
 
   useEffect(() => {
@@ -56,12 +57,16 @@ export default function CompetitionTabs({ overall, squid, tour }: CompetitionTab
         >
           <span>⛳</span> The Tour
         </button>
+        <button type="button" className={active === "history" ? "tab active" : "tab"} onClick={() => changeTab("history")} role="tab" aria-selected={active === "history"}>
+          <span>📊</span> GW History
+        </button>
       </nav>
 
       <div className="tabPanel" role="tabpanel">
         {active === "overall" && overall}
         {active === "squid" && squid}
         {active === "tour" && tour}
+        {active === "history" && history}
       </div>
     </>
   );

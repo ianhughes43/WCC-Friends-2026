@@ -48,6 +48,7 @@ export type FplElement = {
   id: number;
   web_name: string;
   team: number;
+  element_type: number;
   now_cost: number;
   cost_change_event: number;
   cost_change_start: number;

@@ -8,3 +8,18 @@
 @media(max-width:520px){.header{flex-direction:column;gap:13px}.join{width:100%;text-align:center}.tabs{gap:4px;padding:5px}.tab{font-size:11px;padding:10px 4px}.tab span{display:block;margin:0 0 3px;font-size:16px}.competitionHero{align-items:flex-start}.competitionHero p{font-size:12px;max-width:250px}.heroNumber strong{font-size:28px}.ruleStrip{gap:6px}.ruleStrip span{font-size:10px;padding:6px 8px}.twoStats{grid-template-columns:1fr 1fr}.majorCards{grid-template-columns:1fr}.rulesBody{grid-template-columns:1fr}.countdown{gap:5px}.timeCell{padding:8px 4px}.timeCell strong{font-size:20px}.cardHead{padding:15px 13px}.cardHead h2{font-size:12px}th,td{padding:10px 8px;font-size:12px}}
 
 .participationCell{white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--cyan);font-weight:800}.participationNote{font-size:11px;color:var(--muted);margin:9px 2px 16px}
+
+/* GW History tab: compact mobile controls and sticky manager names */
+.tabs{grid-template-columns:repeat(4,minmax(0,1fr))}
+.historyControls{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:16px 18px 4px}
+.historySwitch{display:flex;gap:5px;background:#06131d;border:1px solid var(--line);padding:4px;border-radius:10px}
+.historySwitch button{background:transparent;border:0;color:var(--muted);padding:9px 12px;font-weight:800;border-radius:7px;cursor:pointer}
+.historySwitch button.selected{background:var(--cyan);color:#001217}
+.historyControls input{min-width:150px;flex:1;max-width:300px;background:#06131d;color:var(--text);border:1px solid var(--line);padding:12px;border-radius:9px}
+.historyNote{padding:4px 18px 14px;margin:0;color:var(--muted);font-size:12px;line-height:1.5}
+.historyTable{max-height:75vh;overflow:auto}
+.historyTable th,.historyTable td{min-width:64px;text-align:center;white-space:nowrap}
+.historyTable .historyManager{position:sticky;left:0;min-width:170px;max-width:170px;text-align:left;background:#0b1a26;z-index:2;white-space:normal;box-shadow:2px 0 0 var(--line)}
+.historyTable th.historyManager{z-index:4}
+.historyTable .historyFirst{color:var(--gold);font-weight:900}
+@media(max-width:520px){.tabs{gap:3px}.tab{font-size:10px;padding:9px 2px}.tab span{font-size:16px}.historyTable .historyManager{min-width:135px;max-width:135px}.historyControls{padding:12px 10px 6px}.historyNote{padding:4px 10px 12px}}
