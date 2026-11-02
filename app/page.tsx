@@ -60,9 +60,8 @@ export default async function Home() {
       ])
     );
 
-    // Use the exact Gameweek score already shown in the official FPL league standings.
-    // This keeps Squid and Tour aligned with the Overall tab and means FPL itself
-    // handles autosubs, captaincy changes, bonus updates and transfer hits.
+    // Projections use live player scores plus estimated substitutions.
+    // Official FPL event totals are the fallback if projection inputs are unavailable.
     const projections = Object.fromEntries(league.standings.map((manager, index) => [
       manager.entry,
       deadlinePassed && !current.finished && picks[index]
@@ -119,7 +118,7 @@ export default async function Home() {
                          row.rank === 3 ? <><span className="rankPlace">🥉 3rd</span><span className="rankPrize">£30</span></> : row.rank}
                       </td>
                       <td><a className="teamLink" href={`https://fantasy.premierleague.com/en/entry/${row.entry}/event/${current.id}`} target="_blank" rel="noreferrer"><b>{row.entry_name}</b><small>{row.player_name}</small></a></td>
-                      <td><b>{liveScores[row.entry]}</b>{projections[row.entry]?.autoSubDelta ? <small style={{display:"block",color:"#7de2b0"}}>Auto-sub {projections[row.entry]!.autoSubDelta > 0 ? "+" : ""}{projections[row.entry]!.autoSubDelta}</small> : null}</td>
+                      <td><b>{liveScores[row.entry]}</b>{projections[row.entry] ? <small className={`autoSubStatus ${projections[row.entry]!.autoSubDelta === 0 ? "pending" : ""}`}>{projections[row.entry]!.autoSubDelta !== 0 ? `Projected subs ${projections[row.entry]!.autoSubDelta > 0 ? "+" : ""}${projections[row.entry]!.autoSubDelta}` : "Projected subs: none yet"}</small> : deadlinePassed && !current.finished ? <small className="autoSubStatus pending">Projection unavailable</small> : null}</td>
                       <ParticipationCells value={participation[row.entry]} />
                       <td><b>{row.total}</b></td>
                       <td><span className={mv.cls}>{mv.symbol}</span></td>

@@ -417,14 +417,18 @@ export default async function SquidGame({
           {eliminations.length ? (
             <div className="compactList">
               {eliminations.slice().reverse().map((elimination) => (
-                <div className="simpleRow" key={`${elimination.gw}-${elimination.entry}`}>
+                <div className="squidElimination" key={`${elimination.gw}-${elimination.entry}`}>
                   <span className="gwBadge">GW{elimination.gw}</span>
-                  <div className="grow"><a className="teamLink" href={`https://fantasy.premierleague.com/en/entry/${elimination.entry}/event/${activeEvent.id}`} target="_blank" rel="noreferrer"><b>{elimination.team}</b><small>{elimination.manager}</small></a></div>
-                  <div><strong>{elimination.points} - {elimination.transferCost} = {elimination.squidPoints}</strong>
+                  <div className="squidEliminationMain">
+                    <a className="teamLink" href={`https://fantasy.premierleague.com/en/entry/${elimination.entry}/event/${elimination.gw}`} target="_blank" rel="noreferrer"><b>{elimination.team}</b><small>{elimination.manager}</small></a>
                     {elimination.tieBreaker && (
-                      <div><small><b>Eliminated on tie-breaker — {elimination.tieBreaker.method === "goals" ? "Starting XI goals scored" : "Starting XI goals conceded"}</b></small><small>{elimination.tieBreaker.opponents.map((opponent) => `${opponent.team}: ${opponent.goals} scored${elimination.tieBreaker?.method === "conceded" ? `, ${opponent.conceded} conceded` : ""}`).join(" · ")}</small></div>
+                      <div className="squidEliminationDetail">
+                        <b>Eliminated on tie-breaker — {elimination.tieBreaker.method === "goals" ? "Starting XI goals scored" : "Starting XI goals conceded"}</b>
+                        <span>{elimination.tieBreaker.opponents.map((opponent) => `${opponent.team}: ${opponent.goals} scored${elimination.tieBreaker?.method === "conceded" ? `, ${opponent.conceded} conceded` : ""}`).join(" · ")}</span>
+                      </div>
                     )}
                   </div>
+                  <strong className="squidEliminationScore">{elimination.points} - {elimination.transferCost} = {elimination.squidPoints}</strong>
                 </div>
               ))}
             </div>

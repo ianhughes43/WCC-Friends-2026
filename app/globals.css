@@ -23,3 +23,17 @@
 .historyTable th.historyManager{z-index:4}
 .historyTable .historyFirst{color:var(--gold);font-weight:900}
 @media(max-width:520px){.tabs{gap:3px}.tab{font-size:10px;padding:9px 2px}.tab span{font-size:16px}.historyTable .historyManager{min-width:135px;max-width:135px}.historyControls{padding:12px 10px 6px}.historyNote{padding:4px 10px 12px}}
+
+/* Squid elimination history: fixed columns, no overlapping text on any viewport */
+.squidElimination{display:grid;grid-template-columns:52px minmax(0,1fr) auto;align-items:start;gap:12px;padding:16px 18px;border-bottom:1px solid var(--line)}
+.squidElimination:last-child{border-bottom:0}
+.squidElimination .gwBadge{margin-top:3px;white-space:nowrap}
+.squidEliminationMain{min-width:0;overflow-wrap:anywhere}
+.squidEliminationMain .teamLink{display:block;min-width:0}
+.squidEliminationMain .teamLink b,.squidEliminationMain .teamLink small{display:block;overflow-wrap:anywhere}
+.squidEliminationScore{white-space:nowrap;font-variant-numeric:tabular-nums;text-align:right}
+.squidEliminationDetail{display:flex;flex-direction:column;gap:5px;margin-top:9px;color:var(--muted);font-size:12px;line-height:1.55;overflow-wrap:anywhere}
+.squidEliminationDetail b{color:var(--text)}
+@media(max-width:620px){.squidElimination{grid-template-columns:48px minmax(0,1fr);gap:8px 10px;padding:14px 12px}.squidEliminationScore{grid-column:2;grid-row:2;text-align:left;font-size:13px}.squidEliminationDetail{font-size:11px}}
+.autoSubStatus{display:block;margin-top:4px;color:#7de2b0;font-size:11px;white-space:nowrap}
+.autoSubStatus.pending{color:var(--muted)}
