@@ -128,7 +128,7 @@ export default async function Home() {
                          row.rank === 3 ? <><span className="rankPlace">🥉 3rd</span><span className="rankPrize">£30</span></> : row.rank}
                       </td>
                       <td><a className="teamLink" href={`https://fantasy.premierleague.com/en/entry/${row.entry}/event/${current.id}`} target="_blank" rel="noreferrer"><b>{row.entry_name}</b><small>{row.player_name}</small></a></td>
-                      <td><b>{liveScores[row.entry]}</b>{projections[row.entry] ? <small className={`autoSubStatus ${projections[row.entry]!.autoSubDelta === 0 ? "pending" : ""}`}>{projections[row.entry]!.autoSubDelta !== 0 ? `${projections[row.entry]!.potential ? "Potential" : "Projected"} subs ${projections[row.entry]!.autoSubDelta > 0 ? "+" : ""}${projections[row.entry]!.autoSubDelta}` : "Projected subs: none yet"}</small> : deadlinePassed && !current.finished ? <small className="autoSubStatus pending">Projection unavailable</small> : null}</td>
+                      <td><b>{liveScores[row.entry]}</b>{projections[row.entry] ? <small className={`autoSubStatus ${projections[row.entry]!.autoSubDelta === 0 ? "pending" : ""}`}>{projections[row.entry]!.autoSubDelta !== 0 ? `Includes auto subs ${projections[row.entry]!.autoSubDelta > 0 ? "+" : ""}${projections[row.entry]!.autoSubDelta}` : "Includes auto subs (0)"}</small> : deadlinePassed && !current.finished ? <small className="autoSubStatus pending">Projection unavailable</small> : null}</td>
                       <ParticipationCells value={projectedParticipation[row.entry]} />
                       <td><b>{row.total}</b></td>
                       <td><span className={mv.cls}>{mv.symbol}</span></td>
@@ -151,6 +151,7 @@ export default async function Home() {
         histories={histories}
         liveScores={liveScores}
         participation={projectedParticipation}
+        autoSubAdjustments={Object.fromEntries(league.standings.map(manager => [manager.entry, projections[manager.entry]?.autoSubDelta ?? null]))}
       />
     );
 

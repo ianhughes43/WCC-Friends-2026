@@ -17,6 +17,7 @@ type SquidGameProps = {
   histories: HistoryBundle[];
   liveScores: Record<number, number>;
   participation: Record<number, Participation | undefined>;
+  autoSubAdjustments: Record<number, number | null>;
 };
 
 type Elimination = {
@@ -59,6 +60,7 @@ export default async function SquidGame({
   histories,
   liveScores,
   participation,
+  autoSubAdjustments,
 }: SquidGameProps) {
   // Use the most recent passed deadline, with the bootstrap current event as
   // a fallback if the API omits deadlines. Never process the active GW.
@@ -376,7 +378,7 @@ export default async function SquidGame({
                       <tr className={rowClass} key={manager.entry}>
                         <td><span className={badgeClass}>{label}</span></td>
                         <td><a className="teamLink" href={`https://fantasy.premierleague.com/en/entry/${manager.entry}/event/${activeEvent.id}`} target="_blank" rel="noreferrer"><b>{manager.entry_name}</b><small>{manager.player_name}</small></a></td>
-                        <td className="scoreCell"><b>{manager.points}</b></td>
+                        <td className="scoreCell"><b>{manager.points}</b>{!activeGwClosed && <small className="autoSubStatus pending" style={{ display: "block", whiteSpace: "nowrap" }}>{autoSubAdjustments[manager.entry] === null || autoSubAdjustments[manager.entry] === undefined ? "Auto subs unavailable" : autoSubAdjustments[manager.entry] === 0 ? "Includes auto subs (0)" : `Includes auto subs ${autoSubAdjustments[manager.entry]! > 0 ? "+" : ""}${autoSubAdjustments[manager.entry]}`}</small>}</td>
                         <ParticipationCells value={participation[manager.entry]} />
                         <td className="scoreCell"><b>{manager.transferCost ? `-${manager.transferCost}` : "0"}</b></td>
                         <td className="scoreCell"><b>{manager.squidPoints}</b></td>
