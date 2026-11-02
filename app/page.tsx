@@ -130,7 +130,7 @@ export default async function Home() {
                       <td><a className="teamLink" href={`https://fantasy.premierleague.com/en/entry/${row.entry}/event/${current.id}`} target="_blank" rel="noreferrer"><b>{row.entry_name}</b><small>{row.player_name}</small></a></td>
                       <td><b>{liveScores[row.entry]}</b>{projections[row.entry] ? <small className={`autoSubStatus ${projections[row.entry]!.autoSubDelta === 0 ? "pending" : ""}`}>{projections[row.entry]!.autoSubDelta !== 0 ? `Includes auto subs ${projections[row.entry]!.autoSubDelta > 0 ? "+" : ""}${projections[row.entry]!.autoSubDelta}` : "Includes auto subs (0)"}</small> : deadlinePassed && !current.finished ? <small className="autoSubStatus pending">Projection unavailable</small> : null}</td>
                       <ParticipationCells value={projectedParticipation[row.entry]} />
-                      <td><b>{row.total}</b></td>
+                      <td><b>{row.total + (projections[row.entry]?.autoSubDelta ?? 0)}</b>{(projections[row.entry]?.autoSubDelta ?? 0) !== 0 ? <small className="autoSubStatus">Includes auto subs {projections[row.entry]!.autoSubDelta > 0 ? "+" : ""}{projections[row.entry]!.autoSubDelta}</small> : null}</td>
                       <td><span className={mv.cls}>{mv.symbol}</span></td>
                     </tr>
                   );
