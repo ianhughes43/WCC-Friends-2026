@@ -179,7 +179,7 @@ export default async function Home() {
           <a className="join" href={`https://fantasy.premierleague.com/leagues/auto-join/${joinCode}`} target="_blank" rel="noreferrer">Join League ↗</a>
         </header>
 
-        <CompetitionTabs overall={overall} squid={squid} tour={tour} history={<GameweekHistory histories={histories} events={bootstrap.events} />} />
+        <CompetitionTabs overall={overall} squid={squid} tour={tour} history={<GameweekHistory histories={histories} events={bootstrap.events} currentGw={current.id} liveProjections={Object.fromEntries(league.standings.map(manager => [manager.entry, projections[manager.entry] ? { points: projections[manager.entry]!.points, autoSubDelta: projections[manager.entry]!.autoSubDelta } : null]))} />} />
 
         <footer>Unofficial FPL companion for Willoughby Cricket &amp; Friends. Scores refresh from the public Fantasy Premier League endpoints.</footer>
       </main>
