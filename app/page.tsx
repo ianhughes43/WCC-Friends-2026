@@ -74,6 +74,16 @@ export default async function Home() {
       projections[manager.entry]?.points ?? manager.event_total ?? 0,
     ]));
 
+    // Played count reflects the projected bench replacement too. This does not
+    // change FPL's official picks or the final Squid elimination calculation.
+    const projectedParticipation = Object.fromEntries(league.standings.map(manager => {
+      const base = participation[manager.entry];
+      const projection = projections[manager.entry];
+      return [manager.entry, base && projection && projection.playedDelta > 0
+        ? { ...base, played: Math.min(base.total, base.played + projection.playedDelta) }
+        : base];
+    }));
+
     const movers = league.standings
       .map((row) => ({ ...row, move: row.last_rank > 0 ? row.last_rank - row.rank : 0 }))
       .sort((a, b) => b.move - a.move);
@@ -118,8 +128,8 @@ export default async function Home() {
                          row.rank === 3 ? <><span className="rankPlace">🥉 3rd</span><span className="rankPrize">£30</span></> : row.rank}
                       </td>
                       <td><a className="teamLink" href={`https://fantasy.premierleague.com/en/entry/${row.entry}/event/${current.id}`} target="_blank" rel="noreferrer"><b>{row.entry_name}</b><small>{row.player_name}</small></a></td>
-                      <td><b>{liveScores[row.entry]}</b>{projections[row.entry] ? <small className={`autoSubStatus ${projections[row.entry]!.autoSubDelta === 0 ? "pending" : ""}`}>{projections[row.entry]!.autoSubDelta !== 0 ? `Projected subs ${projections[row.entry]!.autoSubDelta > 0 ? "+" : ""}${projections[row.entry]!.autoSubDelta}` : "Projected subs: none yet"}</small> : deadlinePassed && !current.finished ? <small className="autoSubStatus pending">Projection unavailable</small> : null}</td>
-                      <ParticipationCells value={participation[row.entry]} />
+                      <td><b>{liveScores[row.entry]}</b>{projections[row.entry] ? <small className={`autoSubStatus ${projections[row.entry]!.autoSubDelta === 0 ? "pending" : ""}`}>{projections[row.entry]!.autoSubDelta !== 0 ? `${projections[row.entry]!.potential ? "Potential" : "Projected"} subs ${projections[row.entry]!.autoSubDelta > 0 ? "+" : ""}${projections[row.entry]!.autoSubDelta}` : "Projected subs: none yet"}</small> : deadlinePassed && !current.finished ? <small className="autoSubStatus pending">Projection unavailable</small> : null}</td>
+                      <ParticipationCells value={projectedParticipation[row.entry]} />
                       <td><b>{row.total}</b></td>
                       <td><span className={mv.cls}>{mv.symbol}</span></td>
                     </tr>
@@ -140,7 +150,7 @@ export default async function Home() {
         currentEvent={current}
         histories={histories}
         liveScores={liveScores}
-        participation={participation}
+        participation={projectedParticipation}
       />
     );
 
@@ -151,7 +161,7 @@ export default async function Home() {
         currentEvent={current}
         histories={histories}
         liveScores={liveScores}
-        participation={participation}
+        participation={projectedParticipation}
       />
     );
 
